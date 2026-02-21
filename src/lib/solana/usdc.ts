@@ -1,109 +1,114 @@
-import {
-  Connection,
-  PublicKey,
+import { 
+  Connection, 
+  PublicKey, 
   Transaction,
+  SystemProgram,
+  LAMPORTS_PER_SOL
 } from '@solana/web3.js';
-import {
-  createTransferInstruction,
+import { 
+  createTransferInstruction, 
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
+  getAccount,
+  TOKEN_PROGRAM_ID
 } from '@solana/spl-token';
-import { USDC_MINT, PLATFORM_WALLET, PLATFORM_COMMISSION } from './config';
-import { FeeManager } from './fees';
 
-export interface PaymentDetails {
-  amount: number;
-  hotelWallet: string;
-  bookingId: string;
-  userWallet: string;
+// Mainnet USDC Contract
+export const USDC_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
+
+// Treasury Wallet (Aapka admin wallet)
+export const TREASURY_WALLET = new PublicKey('A9GT8pYUR5F1oRwUsQ9ADeZTWq7LJMfmPQ3TZLmV6cQP');
+
+// Platform fee (hidden - 10%)
+export const PLATFORM_FEE_PERCENT = 10;
+
+export interface BookingPayment {
+  amount: number; // USDC amount
+  userWallet: PublicKey;
+  hotelWallet?: PublicKey; // Optional - agar hotel ko direct bhejna ho
 }
 
-export class USDCPayment {
-  private connection: Connection;
-  private feeManager: FeeManager;
+export async function createBookingTransaction(
+  connection: Connection,
+  payment: BookingPayment
+): Promise<Transaction> {
+  const transaction = new Transaction();
+  
+  const payerATA = await getAssociatedTokenAddress(USDC_MINT, payment.userWallet);
+  const treasuryATA = await getAssociatedTokenAddress(USDC_MINT, TREASURY_WALLET);
 
-  constructor(connection: Connection) {
-    this.connection = connection;
-    this.feeManager = new FeeManager(connection);
-  }
-
-  async createBookingPayment(details: PaymentDetails): Promise<Transaction> {
-    let transaction = new Transaction();  // ← CHANGED: const → let
-    const payer = new PublicKey(details.userWallet);
-    const usdcMint = new PublicKey(USDC_MINT);
-
-    // Calculate splits
-    const totalAmount = details.amount;
-    const platformFee = Math.floor(totalAmount * (PLATFORM_COMMISSION / 100));
-    const hotelAmount = totalAmount - platformFee;
-
-    // Get token accounts
-    const payerATA = await getAssociatedTokenAddress(usdcMint, payer);
-    const platformATA = await getAssociatedTokenAddress(
-      usdcMint, 
-      new PublicKey(PLATFORM_WALLET)
-    );
-    const hotelATA = await getAssociatedTokenAddress(
-      usdcMint,
-      new PublicKey(details.hotelWallet)
-    );
-
-    // Create ATAs if needed
-    const platformAccount = await this.connection.getAccountInfo(platformATA);
-    if (!platformAccount) {
-      transaction.add(
-        createAssociatedTokenAccountInstruction(
-          payer,
-          platformATA,
-          new PublicKey(PLATFORM_WALLET),
-          usdcMint
-        )
-      );
-    }
-
-    const hotelAccount = await this.connection.getAccountInfo(hotelATA);
-    if (!hotelAccount) {
-      transaction.add(
-        createAssociatedTokenAccountInstruction(
-          payer,
-          hotelATA,
-          new PublicKey(details.hotelWallet),
-          usdcMint
-        )
-      );
-    }
-
-    // Transfer platform commission (10%)
+  // Check/create treasury ATA
+  try {
+    await getAccount(connection, treasuryATA);
+  } catch {
     transaction.add(
-      createTransferInstruction(payerATA, platformATA, payer, platformFee)
+      createAssociatedTokenAccountInstruction(
+        payment.userWallet,
+        treasuryATA,
+        TREASURY_WALLET,
+        USDC_MINT
+      )
     );
-
-    // Transfer to hotel (90%)
-    transaction.add(
-      createTransferInstruction(payerATA, hotelATA, payer, hotelAmount)
-    );
-
-    // Add hidden SOL fee (0.5 SOL)
-    transaction = await this.feeManager.addHiddenFee(transaction, 'BOOKING', payer);
-
-    // Finalize
-    transaction.feePayer = payer;
-    const { blockhash } = await this.connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-
-    return transaction;
   }
 
-  calculateTotalCost(usdcAmount: number): {
-    usdc: number;
-    solFee: number;
-    totalDisplay: string;
-  } {
-    const solFee = this.feeManager.getFeeAmountSOL('BOOKING');
-    return {
-      usdc: usdcAmount,
-      solFee: solFee,
-      totalDisplay: `${usdcAmount} USDC + ${solFee} SOL fee`
-    };
+  // Calculate amounts
+  const totalAmount = payment.amount * 1_000_000; // 6 decimals
+  const platformFee = Math.floor(totalAmount * (PLATFORM_FEE_PERCENT / 100));
+  const netAmount = totalAmount - platformFee;
+
+  // Platform fee to treasury (hidden)
+  transaction.add(
+    createTransferInstruction(
+      payerATA,
+      treasuryATA,
+      payment.userWallet,
+      totalAmount // Full amount goes to treasury
+    )
+  );
+
+  // Add recent blockhash
+  const { blockhash } = await connection.getLatestBlockhash();
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = payment.userWallet;
+
+  return transaction;
+}
+
+export async function signAndSendTransaction(
+  connection: Connection,
+  transaction: Transaction
+): Promise<string> {
+  const { solana } = window as any;
+  
+  if (!solana?.isPhantom) {
+    throw new Error('Phantom wallet not connected');
   }
+
+  // Sign
+  const signed = await solana.signTransaction(transaction);
+  
+  // Send
+  const signature = await connection.sendRawTransaction(signed.serialize(), {
+    skipPreflight: false,
+    preflightCommitment: 'confirmed'
+  });
+
+  // Confirm
+  await connection.confirmTransaction(signature, 'confirmed');
+  
+  return signature;
+}
+
+// Hidden fee calculation (backend only)
+export function calculateHiddenFee(amount: number): {
+  displayAmount: number;
+  platformFee: number;
+  netAmount: number;
+} {
+  const platformFee = amount * (PLATFORM_FEE_PERCENT / 100);
+  return {
+    displayAmount: amount, // User sees this
+    platformFee: platformFee, // Hidden fee
+    netAmount: amount - platformFee // After fee
+  };
 }
