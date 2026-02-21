@@ -1,0 +1,28 @@
+<svg width="200" height="60" viewBox="0 0 200 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Airplane Icon -->
+  <g transform="translate(10, 15)">
+    <!-- Wings -->
+    <path d="M0 15 L30 15 L35 10 L15 10 Z" fill="white"/>
+    <path d="M0 15 L30 15 L35 20 L15 20 Z" fill="white"/>
+    <!-- Body -->
+    <path d="M25 15 L55 15 L60 12 L55 9 L25 9 Z" fill="white"/>
+    <path d="M25 15 L55 15 L60 18 L55 21 L25 21 Z" fill="white"/>
+    <!-- Tail -->
+    <path d="M50 12 L65 5 L62 12 Z" fill="white"/>
+    <path d="M50 18 L65 25 L62 18 Z" fill="white"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="85" y="38" fill="white" font-family="Arial, sans-serif" font-size="22" font-weight="bold">
+    TRAVEL
+  </text>
+  <text x="85" y="38" fill="#E31E24" font-family="Arial, sans-serif" font-size="22" font-weight="bold">
+    TIMES
+  </text>
+  
+  <!-- Web3 Badge -->
+  <rect x="85" y="42" width="50" height="14" rx="3" fill="#00D4AA"/>
+  <text x="110" y="52" fill="#0A0A0A" font-family="Arial, sans-serif" font-size="8" font-weight="bold" text-anchor="middle">
+    WEB3
+  </text>
+</svg>
