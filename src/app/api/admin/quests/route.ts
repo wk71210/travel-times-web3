@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/db/connect';
+import { connectDB } from '@/lib/mongodb';
 import { Quest } from '@/lib/models/Quest';
 
 // GET all quests
