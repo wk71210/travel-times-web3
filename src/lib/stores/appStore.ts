@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, Booking, Quest, Event, Hotel, AdminConfig } from '@/Types/index';
+import { User, Booking, Quest, Event, Hotel, AdminConfig } from '@/types/index';
 import { ADMIN_WALLET } from '@/lib/solana/config';
 import { hotels as defaultHotels } from '@/lib/data/hotels';
 
