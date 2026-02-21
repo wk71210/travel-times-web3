@@ -28,7 +28,7 @@ export class USDCPayment {
   }
 
   async createBookingPayment(details: PaymentDetails): Promise<Transaction> {
-    const transaction = new Transaction();
+    let transaction = new Transaction();  // ← CHANGED: const → let
     const payer = new PublicKey(details.userWallet);
     const usdcMint = new PublicKey(USDC_MINT);
 
