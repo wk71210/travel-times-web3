@@ -36,7 +36,6 @@ export default function WalletConnect() {
       const response = await window.solana.connect();
       const publicKey = response.publicKey.toString();
 
-      // Check admin
       const adminWallet = process.env.NEXT_PUBLIC_ADMIN_WALLET;
       const isAdminUser = publicKey === adminWallet;
 
