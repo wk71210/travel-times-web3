@@ -85,7 +85,7 @@ export default function BookingsPage() {
                 </p>
                 
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {hotel.amenities.slice(0, 3).map((a) => (
+                  {hotel.amenities.slice(0, 3).map((a: string) => (
                     <span key={a} className="px-2 py-1 bg-nomad-dark rounded text-xs text-nomad-gray capitalize">
                       {a}
                     </span>
