@@ -1,4 +1,4 @@
-import { Hotel } from '@/types';
+import { Hotel } from '@/Types';
 
 export const hotels: Hotel[] = [
   {
