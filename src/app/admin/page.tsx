@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/lib/stores/appStore';
-import { Shield, Users, DollarSign, Hotel, Settings, Plus, Edit, Trash2, Loader2, X } from 'lucide-react';
+import { Shield, Users, Hotel, Settings, Plus, Edit, Trash2, Loader2, X, ExternalLink } from 'lucide-react';
 
 interface Hotel {
   _id: string;
@@ -27,6 +27,7 @@ interface Quest {
   type: 'essential' | 'daily' | 'special';
   xpReward: number;
   cost: number;
+  link?: string; // NEW
   isActive: boolean;
 }
 
@@ -42,7 +43,7 @@ export default function AdminPage() {
   const [modalType, setModalType] = useState<'hotel' | 'quest'>('quest');
   const [editingItem, setEditingItem] = useState<Hotel | Quest | null>(null);
 
-  // Form states
+  // Form states - ADDED link field
   const [formData, setFormData] = useState({
     name: '',
     location: '',
@@ -56,7 +57,8 @@ export default function AdminPage() {
     questDescription: '',
     questType: 'essential',
     questXp: '100',
-    questCost: '0'
+    questCost: '0',
+    questLink: '' // NEW
   });
 
   useEffect(() => {
@@ -128,14 +130,18 @@ export default function AdminPage() {
           alert(error.error || 'Failed to save hotel');
         }
       } else {
+        // QUEST PAYLOAD WITH LINK
         const payload = {
           id: editingItem?.id,
           title: formData.title,
           description: formData.questDescription,
           type: formData.questType,
           xpReward: Number(formData.questXp),
-          cost: Number(formData.questCost)
+          cost: Number(formData.questCost),
+          link: formData.questLink // NEW
         };
+
+        console.log('Sending quest payload:', payload); // Debug
 
         const res = await fetch('/api/admin/quests', {
           method: editingItem ? 'PUT' : 'POST',
@@ -143,13 +149,15 @@ export default function AdminPage() {
           body: JSON.stringify(payload)
         });
 
+        const responseData = await res.json();
+        console.log('Quest API response:', responseData); // Debug
+
         if (res.ok) {
           setShowModal(false);
           resetForm();
           fetchData();
         } else {
-          const error = await res.json();
-          alert(error.error || 'Failed to save quest');
+          alert(responseData.error || responseData.details || 'Failed to save quest');
         }
       }
     } catch (error) {
@@ -196,7 +204,8 @@ export default function AdminPage() {
       questDescription: '',
       questType: 'essential',
       questXp: '100',
-      questCost: '0'
+      questCost: '0',
+      questLink: '' // NEW
     });
     setEditingItem(null);
   };
@@ -232,7 +241,8 @@ export default function AdminPage() {
         questDescription: quest.description,
         questType: quest.type,
         questXp: quest.xpReward.toString(),
-        questCost: quest.cost.toString()
+        questCost: quest.cost.toString(),
+        questLink: quest.link || '' // NEW
       });
     }
     setShowModal(true);
@@ -392,7 +402,7 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* Quests List */}
+          {/* Quests List with LINK display */}
           {!loading && activeTab === 'quests' && (
             <div className="space-y-3">
               {quests.length === 0 ? (
@@ -414,6 +424,19 @@ export default function AdminPage() {
                         <div className="flex items-center gap-3 mt-1 text-sm">
                           <span className="text-crypto-green">{quest.xpReward} XP</span>
                           {quest.cost > 0 && <span className="text-blue-400">${quest.cost} USDC</span>}
+                          {/* SHOW LINK IF EXISTS */}
+                          {quest.link && (
+                            <a 
+                              href={quest.link} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-purple-400 flex items-center gap-1 hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Link
+                            </a>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -453,7 +476,7 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal with LINK field */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-nomad-card rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto border border-nomad-border">
@@ -472,6 +495,7 @@ export default function AdminPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {modalType === 'hotel' ? (
                 <>
+                  {/* Hotel fields same as before */}
                   <div>
                     <label className="block text-sm font-medium text-nomad-gray mb-1">Hotel Name</label>
                     <input
@@ -557,8 +581,9 @@ export default function AdminPage() {
                 </>
               ) : (
                 <>
+                  {/* Quest fields with LINK */}
                   <div>
-                    <label className="block text-sm font-medium text-nomad-gray mb-1">Quest Title</label>
+                    <label className="block text-sm font-medium text-nomad-gray mb-1">Quest Title *</label>
                     <input
                       type="text"
                       value={formData.title}
@@ -568,7 +593,7 @@ export default function AdminPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-nomad-gray mb-1">Description</label>
+                    <label className="block text-sm font-medium text-nomad-gray mb-1">Description *</label>
                     <textarea
                       value={formData.questDescription}
                       onChange={(e) => setFormData({...formData, questDescription: e.target.value})}
@@ -609,6 +634,21 @@ export default function AdminPage() {
                         className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:outline-none focus:border-crypto-green"
                       />
                     </div>
+                  </div>
+                  {/* NEW: LINK FIELD */}
+                  <div>
+                    <label className="block text-sm font-medium text-nomad-gray mb-1 flex items-center gap-2">
+                      <ExternalLink className="w-4 h-4" />
+                      Quest Link (Optional)
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.questLink}
+                      onChange={(e) => setFormData({...formData, questLink: e.target.value})}
+                      className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:outline-none focus:border-crypto-green"
+                      placeholder="https://example.com/quest"
+                    />
+                    <p className="text-xs text-nomad-gray mt-1">External link for users to complete the quest</p>
                   </div>
                 </>
               )}
