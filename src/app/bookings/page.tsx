@@ -1,18 +1,77 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { Search, MapPin, Star, Heart, ArrowLeft, Filter } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { 
+  createBookingTransaction, 
+  signAndSendTransaction,
+  calculateHiddenFee 
+} from '@/lib/solana/usdc';
+import { useAppStore } from '@/lib/stores/appStore';
 import { hotels } from '@/lib/data/hotels';
+import { Search, MapPin, Star, Heart, ArrowLeft, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 
 export default function BookingsPage() {
+  const router = useRouter();
+  const { user } = useAppStore();
   const [selectedHotel, setSelectedHotel] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const filteredHotels = hotels.filter(h => 
     h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     h.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleBooking = async (hotel: any) => {
+    if (!user?.wallet) {
+      alert('Please connect your Phantom wallet first');
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    try {
+      const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC!);
+      const userWallet = new PublicKey(user.wallet);
+
+      // Calculate hidden fee
+      const feeBreakdown = calculateHiddenFee(hotel.discountedPrice);
+      
+      // Create transaction
+      const transaction = await createBookingTransaction(connection, {
+        amount: hotel.discountedPrice,
+        userWallet: userWallet,
+      });
+
+      // Sign and send
+      const signature = await signAndSendTransaction(connection, transaction);
+      
+      // Success - save to backend
+      await fetch('/api/bookings/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hotelId: hotel.id,
+          userWallet: user.wallet,
+          amount: hotel.discountedPrice,
+          signature: signature,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+
+      alert(`Booking successful! Transaction: ${signature.slice(0, 8)}...`);
+      setSelectedHotel(null);
+      
+    } catch (error: any) {
+      console.error('Booking failed:', error);
+      alert(`Booking failed: ${error.message}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-nomad-dark text-white">
@@ -33,9 +92,6 @@ export default function BookingsPage() {
                 className="bg-transparent flex-1 outline-none text-white placeholder-nomad-gray"
               />
             </div>
-            <button className="p-2 bg-nomad-card rounded-xl border border-nomad-border">
-              <Filter className="w-5 h-5" />
-            </button>
           </div>
         </div>
       </div>
@@ -62,9 +118,6 @@ export default function BookingsPage() {
                 <div className="absolute top-2 left-2 px-2 py-1 bg-crypto-green text-nomad-dark text-xs font-bold rounded">
                   -{hotel.discount}%
                 </div>
-                <button className="absolute top-2 right-2 p-2 bg-black/50 rounded-lg hover:bg-black/70 transition-colors">
-                  <Heart className="w-4 h-4" />
-                </button>
               </div>
               
               {/* Content */}
@@ -100,14 +153,15 @@ export default function BookingsPage() {
                       <span className="text-nomad-gray line-through text-sm">${hotel.originalPrice}</span>
                       <span className="text-2xl font-bold text-crypto-green">${hotel.discountedPrice}</span>
                     </div>
-                    <p className="text-xs text-nomad-gray">per night + 0.5 SOL fee</p>
+                    <p className="text-xs text-nomad-gray">per night</p>
                   </div>
                   
                   <button 
                     onClick={() => setSelectedHotel(hotel)}
-                    className="px-6 py-2 bg-crypto-green text-nomad-dark rounded-lg font-medium hover:bg-crypto-green/90 transition-colors"
+                    disabled={isProcessing}
+                    className="px-6 py-2 bg-crypto-green text-nomad-dark rounded-lg font-medium hover:bg-crypto-green/90 transition-colors disabled:opacity-50"
                   >
-                    Book Now
+                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Book Now'}
                   </button>
                 </div>
               </div>
@@ -126,27 +180,21 @@ export default function BookingsPage() {
             <div className="space-y-3 text-sm mb-6">
               <div className="flex justify-between">
                 <span className="text-nomad-gray">Room Price</span>
-                <span>${selectedHotel.discountedPrice} USDC</span>
+                <span>{selectedHotel.discountedPrice} USDC</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-nomad-gray">Platform Fee (10%)</span>
-                <span>${(selectedHotel.discountedPrice * 0.1).toFixed(2)} USDC</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-nomad-gray">Network Fee</span>
-                <span className="text-crypto-green">0.5 SOL</span>
-              </div>
-              <div className="border-t border-nomad-border pt-3 flex justify-between font-bold">
+              <div className="border-t border-nomad-border pt-3 flex justify-between font-bold text-lg">
                 <span>Total</span>
-                <span>${selectedHotel.discountedPrice} USDC + 0.5 SOL</span>
+                <span className="text-crypto-green">{selectedHotel.discountedPrice} USDC</span>
               </div>
             </div>
-            
-            <div className="p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20 mb-6">
-              <p className="text-xs text-yellow-500/80">
-                ℹ️ 0.5 SOL network fee includes platform charges
-              </p>
-            </div>
+
+            {!user?.wallet && (
+              <div className="p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20 mb-4">
+                <p className="text-xs text-yellow-500/80 text-center">
+                  ⚠️ Please connect your Phantom wallet to book
+                </p>
+              </div>
+            )}
             
             <div className="flex gap-3">
               <button 
@@ -156,13 +204,18 @@ export default function BookingsPage() {
                 Cancel
               </button>
               <button 
-                onClick={() => {
-                  alert(`Booking initiated!\n\nPayment breakdown:\n- ${selectedHotel.discountedPrice * 0.9} USDC → Hotel\n- ${selectedHotel.discountedPrice * 0.1} USDC → Platform (10%)\n- 0.5 SOL → Fee Wallet\n\nConnect wallet to complete.`);
-                  setSelectedHotel(null);
-                }}
-                className="flex-1 py-3 bg-crypto-green text-nomad-dark rounded-lg font-medium hover:bg-crypto-green/90 transition-colors"
+                onClick={() => handleBooking(selectedHotel)}
+                disabled={!user?.wallet || isProcessing}
+                className="flex-1 py-3 bg-crypto-green text-nomad-dark rounded-lg font-medium hover:bg-crypto-green/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Pay with USDC
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  'Pay with USDC'
+                )}
               </button>
             </div>
           </div>
