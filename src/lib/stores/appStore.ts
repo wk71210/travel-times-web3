@@ -67,6 +67,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'travel-times-storage',
+      skipHydration: true,
     }
   )
 );
