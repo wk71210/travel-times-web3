@@ -1,3 +1,4 @@
+// lib/models/Quest.ts
 import mongoose from 'mongoose';
 
 const QuestSchema = new mongoose.Schema({
@@ -11,7 +12,7 @@ const QuestSchema = new mongoose.Schema({
   },
   xpReward: { type: Number, default: 100 },
   cost: { type: Number, default: 0 },
-  link: { type: String, default: '' },  // LINK FIELD
+  link: { type: String, default: '' },
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
