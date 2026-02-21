@@ -66,7 +66,7 @@ function Header() {
             </span>
           </Link>
 
-          {/* Nav */}
+          {/* Nav - Center me */}
           <nav className="hidden md:flex items-center gap-6">
             <Link href="/bookings" className="text-sm text-nomad-gray hover:text-white transition-colors">
               SEARCH
@@ -74,16 +74,19 @@ function Header() {
             <Link href="/profile" className="text-sm text-nomad-gray hover:text-white transition-colors">
               PROFILE
             </Link>
-            {/* Admin link - sirf admin ko dikhayega */}
+          </nav>
+
+          {/* Right Side - Wallet Connect + Admin */}
+          <div className="flex items-center gap-4">
+            {/* Admin link - sirf admin ko dikhayega, wallet ke left me */}
             {isAdmin && (
-              <Link href="/admin" className="text-sm text-crypto-green hover:text-crypto-green/80 transition-colors">
+              <Link 
+                href="/admin" 
+                className="text-sm text-crypto-green hover:text-crypto-green/80 transition-colors px-3 py-1 border border-crypto-green rounded-lg"
+              >
                 ADMIN
               </Link>
             )}
-          </nav>
-
-          {/* Wallet Connect */}
-          <div className="flex items-center gap-4">
             <WalletConnect />
           </div>
         </div>
