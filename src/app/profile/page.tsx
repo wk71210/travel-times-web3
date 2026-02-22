@@ -1,24 +1,41 @@
-// QuestCard component update
-function QuestCard({ quest, index, wallet }: { quest: Quest; index: number; wallet?: string }) {
-  const [status, setStatus] = useState<'pending' | 'completed' | 'claimed'>('pending');
-  const [loading, setLoading] = useState(false);
+'use client';
 
-  useEffect(() => {
-    if (wallet) {
-      checkQuestStatus();
-    }
-  }, [wallet, quest.id]);
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { 
+  User, 
+  Zap, 
+  Trophy, 
+  Gift, 
+  Share2, 
+  Users, 
+  ArrowLeft,
+  Hexagon,
+  Globe,
+  Calendar,
+  ExternalLink,
+  Loader2
+} from 'lucide-react';
 
-  const checkQuestStatus = async () => {
-    try {
-      const res = await fetch(`/api/quests/status?questId=${quest.id}&wallet=${wallet}`);
-      if (res.ok) {
-        const data = await res.json();
-        setStatus(data.status);
-      }
-    } catch (error) {
-      console.error('Failed to check quest status:', error);
-    }
+const tabs = [
+  { id: 'profile', label: 'Profile', icon: User },
+  { id: 'quests', label: 'Quests', icon: Zap },
+  { id: 'badges', label: 'Badges', icon: Trophy },
+  { id: 'communities', label: 'Communities', icon: Users },
+  { id: 'referrals', label: 'Referrals', icon: Share2 },
+];
+
+interface Quest {
+  _id: string;
+  id: string;
+  title: string;
+  description: string;
+  type: 'essential' | 'daily' | 'special';
+  xpReward: number;
+  cost: number;
+  link?: string;
+  isActive: boolean;
+}
   };
 
   const completeQuest = async () => {
