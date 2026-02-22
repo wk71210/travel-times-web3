@@ -5,11 +5,13 @@ import { Quest } from '@/lib/models/Quest';
 export async function GET() {
   try {
     await connectDB();
+    
     const quests = await Quest.find({ isActive: true })
       .select('_id id title description type xpReward cost link isActive createdAt')
       .sort({ createdAt: -1 })
       .lean();
     
+    // Return wrapped response
     return NextResponse.json({ 
       success: true, 
       quests: quests || [],
