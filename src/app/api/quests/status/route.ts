@@ -5,27 +5,48 @@ import { UserQuest } from '@/lib/models/Quest';
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
+    
     const { searchParams } = new URL(request.url);
-    const questId = searchParams.get('questId');
     const wallet = searchParams.get('wallet');
+    const questsParam = searchParams.get('quests');
 
-    if (!questId || !wallet) {
-      return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
+    if (!wallet || !questsParam) {
+      return NextResponse.json({ 
+        error: 'Missing parameters',
+        required: 'wallet and quests (comma-separated questIds)'
+      }, { status: 400 });
     }
 
-    const progress = await UserQuest.findOne({ 
-      userId: wallet, 
-      questId 
+    const questIds = questsParam.split(',');
+    
+    // Find all user quest progress for this wallet
+    const userQuests = await UserQuest.find({ 
+      userId: wallet,
+      questId: { $in: questIds }
+    }).lean();
+
+    // Build status map
+    const statuses: Record<string, 'pending' | 'completed' | 'claimed'> = {};
+    
+    // Initialize all as pending
+    questIds.forEach(id => {
+      statuses[id] = 'pending';
+    });
+
+    // Update with actual statuses from DB
+    userQuests.forEach((uq: any) => {
+      statuses[uq.questId] = uq.status;
     });
 
     return NextResponse.json({ 
-      status: progress?.status || 'pending'
+      success: true, 
+      statuses 
     });
 
-  } catch (error) {
-    console.error('Get quest status error:', error);
+  } catch (error: any) {
+    console.error('Get quest statuses error:', error);
     return NextResponse.json({ 
-      error: 'Failed to get quest status',
+      error: 'Failed to get quest statuses',
       details: error.message 
     }, { status: 500 });
   }
