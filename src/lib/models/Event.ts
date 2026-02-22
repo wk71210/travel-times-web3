@@ -8,10 +8,10 @@ const EventSchema = new mongoose.Schema({
   date: { type: Date, required: true },
   price: { type: Number, required: true },
   originalPrice: { type: Number },
-  image: { type: String },
   capacity: { type: Number, default: 100 },
   booked: { type: Number, default: 0 },
   xpReward: { type: Number, default: 200 },
+  image: { type: String },
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
