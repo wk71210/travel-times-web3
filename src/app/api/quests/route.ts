@@ -1,7 +1,3 @@
-# Local mein file create karo
-mkdir -p src/app/api/quests
-
-cat > src/app/api/quests/route.ts << 'EOF'
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { Quest } from '@/lib/models/Quest';
@@ -19,8 +15,3 @@ export async function GET() {
     }, { status: 500 });
   }
 }
-EOF
-
-git add src/app/api/quests/route.ts
-git commit -m "Add public quests API - correct location"
-git push origin main
