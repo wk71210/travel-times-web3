@@ -12,13 +12,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing questId or wallet' }, { status: 400 });
     }
 
-    // Check if quest exists
     const quest = await Quest.findOne({ id: questId });
     if (!quest) {
       return NextResponse.json({ error: 'Quest not found' }, { status: 404 });
     }
 
-    // Check if already completed
     const existingProgress = await UserQuest.findOne({ 
       userId: wallet, 
       questId 
@@ -28,7 +26,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Quest already completed' }, { status: 400 });
     }
 
-    // Mark quest as completed
     const userQuest = await UserQuest.findOneAndUpdate(
       { userId: wallet, questId },
       { 
