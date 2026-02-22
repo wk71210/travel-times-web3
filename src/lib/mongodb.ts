@@ -7,14 +7,22 @@ if (!MONGODB_URI) {
   throw new Error('Please define MONGODB_URI environment variable');
 }
 
-let cached = global.mongoose;
+const globalWithMongoose = global as typeof globalThis & {
+  mongoose: {
+    conn: typeof mongoose | null;
+    promise: Promise<typeof mongoose> | null;
+  };
+};
+
+let cached = globalWithMongoose.mongoose;
 
 if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+  cached = globalWithMongoose.mongoose = { conn: null, promise: null };
 }
 
 export async function connectDB() {
   if (cached.conn) {
+    console.log('Using cached MongoDB connection');
     return cached.conn;
   }
 
@@ -23,9 +31,15 @@ export async function connectDB() {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      console.log('MongoDB Connected!');
+    console.log('Connecting to MongoDB...');
+    console.log('URI:', MONGODB_URI?.substring(0, 30) + '...');
+
+    cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
+      console.log('MongoDB Connected Successfully!');
       return mongoose;
+    }).catch((err) => {
+      console.error('MongoDB Connection Error:', err);
+      throw err;
     });
   }
 
