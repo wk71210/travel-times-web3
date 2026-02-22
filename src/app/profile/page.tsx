@@ -65,6 +65,7 @@ function QuestRow({ quest, index, status, onComplete, onClaim }: QuestCardProps)
   return (
     <div className="flex items-center justify-between py-4 border-b border-white/5 last:border-0 group">
       <div className="flex items-center gap-4 flex-1">
+        {/* Number */}
         <div className="w-8 h-8 flex items-center justify-center">
           <span className={`text-lg font-bold ${status === 'claimed' ? 'text-crypto-green' : 'text-white/40'}`}>
             {index + 1}
@@ -82,6 +83,7 @@ function QuestRow({ quest, index, status, onComplete, onClaim }: QuestCardProps)
       </div>
 
       <div className="flex items-center gap-3">
+        {/* External Link Button */}
         {quest.link && status === 'pending' && (
           <a 
             href={quest.link}
@@ -94,6 +96,7 @@ function QuestRow({ quest, index, status, onComplete, onClaim }: QuestCardProps)
           </a>
         )}
 
+        {/* Action Button */}
         {status === 'pending' && (
           <button
             onClick={handleComplete}
@@ -127,6 +130,7 @@ function QuestRow({ quest, index, status, onComplete, onClaim }: QuestCardProps)
   );
 }
 
+// Quest Category Section
 function QuestSection({ 
   title, 
   subtitle, 
@@ -146,11 +150,13 @@ function QuestSection({
 
   return (
     <div className="mb-8">
+      {/* Section Header */}
       <div className="text-center mb-6">
         <h3 className="text-crypto-green font-bold text-sm uppercase tracking-widest mb-1">{title}</h3>
         <p className="text-white/40 text-xs">{subtitle}</p>
       </div>
 
+      {/* Quest Card */}
       <div className="bg-nomad-card/50 backdrop-blur-sm rounded-2xl border border-white/5 p-6">
         <div className="divide-y divide-white/5">
           {quests.map((quest, index) => (
@@ -179,33 +185,43 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // IMPORTANT: Always fetch quests on mount, regardless of wallet
+  // Fetch quests on mount
   useEffect(() => {
-    console.log('Profile mounted, fetching quests...'); // DEBUG
     fetchQuests();
   }, []);
 
-  // Fetch quests function
+  // Fetch quests function - HANDLES BOTH API FORMATS
   const fetchQuests = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      console.log('Calling /api/quests...'); // DEBUG
-      
       const res = await fetch('/api/quests');
       const data = await res.json();
       
-      console.log('Quests API response:', data); // DEBUG
+      console.log('Quests API response:', data);
       
-      if (data.success) {
-        setQuests(data.quests || []);
-        // Fetch user quest statuses if wallet connected
-        if (wallet && data.quests?.length > 0) {
-          fetchUserQuestStatuses(data.quests.map((q: Quest) => q.id));
-        }
-      } else {
-        setError(data.error || 'Failed to load quests');
+      // Handle both formats: direct array or wrapped object
+      let questsData: Quest[] = [];
+      if (Array.isArray(data)) {
+        // Direct array format
+        questsData = data;
+      } else if (data.success && Array.isArray(data.quests)) {
+        // Wrapped format with success flag
+        questsData = data.quests;
+      } else if (Array.isArray(data.quests)) {
+        // Wrapped format without success flag
+        questsData = data.quests;
+      }
+      
+      console.log('Extracted quests:', questsData);
+      console.log('Quest count:', questsData.length);
+      
+      setQuests(questsData);
+      
+      // Fetch user quest statuses if wallet connected
+      if (wallet && questsData.length > 0) {
+        fetchUserQuestStatuses(questsData.map((q) => q.id));
       }
     } catch (error: any) {
       console.error('Failed to fetch quests:', error);
@@ -391,8 +407,8 @@ export default function ProfilePage() {
             ) : (
               <div>
                 {/* Debug info - remove after fix */}
-                <div className="text-xs text-white/30 mb-4">
-                  Total quests loaded: {quests.length} | Essential: {essentialQuests.length} | Team: {teamQuests.length}
+                <div className="text-xs text-white/30 mb-4 text-center">
+                  Loaded {quests.length} quests | Essential: {essentialQuests.length} | Team: {teamQuests.length} | Daily: {dailyQuests.length}
                 </div>
 
                 {/* Essential Quests */}
