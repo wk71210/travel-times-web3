@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { Quest } from '@/lib/models/Quest';
+import { connectDB } from '../../../lib/mongodb';
+import { Quest } from '../../../lib/models/Quest';
 
 export async function GET() {
   try {
