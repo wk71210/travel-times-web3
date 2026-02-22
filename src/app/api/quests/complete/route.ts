@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { Quest, UserQuest } from '@/lib/models/Quest';
-import { User } from '@/lib/models/User';
 
 export async function POST(request: NextRequest) {
   try {
