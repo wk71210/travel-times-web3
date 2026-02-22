@@ -7,6 +7,7 @@ import WalletConnect from '@/components/WalletConnect';
 import { useAppStore } from '@/lib/stores/appStore';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { Zap } from 'lucide-react';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const spaceGrotesk = Space_Grotesk({ 
@@ -26,6 +27,10 @@ function Header() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Calculate XP display
+  const xpDisplay = user?.xp ? `${(user.xp / 1000).toFixed(1)}k` : '0';
+  const boostDisplay = user?.boost || '4.0x';
 
   // Prevent hydration mismatch
   if (!mounted) {
@@ -67,22 +72,34 @@ function Header() {
           </Link>
 
           {/* Nav - Center me */}
-          <nav className="hidden md:flex items-center gap-6">
-            <Link href="/bookings" className="text-sm text-nomad-gray hover:text-white transition-colors">
-              SEARCH
+          <nav className="hidden md:flex items-center gap-8">
+            <Link href="/search" className="text-sm text-white/70 hover:text-white transition-colors uppercase tracking-wider">
+              Search
             </Link>
-            <Link href="/profile" className="text-sm text-nomad-gray hover:text-white transition-colors">
-              PROFILE
+            <Link href="/my-trips" className="text-sm text-white/70 hover:text-white transition-colors uppercase tracking-wider">
+              My Trips
+            </Link>
+            <Link href="/events" className="text-sm text-white/70 hover:text-white transition-colors uppercase tracking-wider">
+              Events
             </Link>
           </nav>
 
-          {/* Right Side - Wallet Connect + Admin */}
-          <div className="flex items-center gap-4">
-            {/* Admin link - sirf admin ko dikhayega, wallet ke left me */}
+          {/* Right Side - XP + Boost + Wallet + Admin */}
+          <div className="flex items-center gap-3">
+            {/* XP Display */}
+            {user?.wallet && (
+              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-nomad-card border border-white/10 rounded-lg">
+                <span className="text-crypto-green text-sm font-medium">{boostDisplay}</span>
+                <Zap className="w-3 h-3 text-crypto-green" />
+                <span className="text-white text-sm font-medium">{xpDisplay} XP</span>
+              </div>
+            )}
+            
+            {/* Admin link */}
             {isAdmin && (
               <Link 
                 href="/admin" 
-                className="text-sm text-crypto-green hover:text-crypto-green/80 transition-colors px-3 py-1 border border-crypto-green rounded-lg"
+                className="text-sm text-crypto-green hover:text-crypto-green/80 transition-colors px-3 py-1.5 border border-crypto-green rounded-lg"
               >
                 ADMIN
               </Link>
