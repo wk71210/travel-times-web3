@@ -224,9 +224,13 @@ function QuestsTab() {
   const fetchQuests = async () => {
     try {
       const res = await fetch('/api/quests');
+      
       if (res.ok) {
         const data = await res.json();
+        console.log('Fetched quests:', data); // DEBUG
         setQuests(data);
+      } else {
+        console.error('API error:', res.status);
       }
     } catch (error) {
       console.error('Failed to fetch quests:', error);
