@@ -65,7 +65,6 @@ function QuestRow({ quest, index, status, onComplete, onClaim }: QuestCardProps)
   return (
     <div className="flex items-center justify-between py-4 border-b border-white/5 last:border-0 group">
       <div className="flex items-center gap-4 flex-1">
-        {/* Number */}
         <div className="w-8 h-8 flex items-center justify-center">
           <span className={`text-lg font-bold ${status === 'claimed' ? 'text-crypto-green' : 'text-white/40'}`}>
             {index + 1}
@@ -83,7 +82,6 @@ function QuestRow({ quest, index, status, onComplete, onClaim }: QuestCardProps)
       </div>
 
       <div className="flex items-center gap-3">
-        {/* External Link Button */}
         {quest.link && status === 'pending' && (
           <a 
             href={quest.link}
@@ -96,7 +94,6 @@ function QuestRow({ quest, index, status, onComplete, onClaim }: QuestCardProps)
           </a>
         )}
 
-        {/* Action Button */}
         {status === 'pending' && (
           <button
             onClick={handleComplete}
@@ -130,7 +127,6 @@ function QuestRow({ quest, index, status, onComplete, onClaim }: QuestCardProps)
   );
 }
 
-// Quest Category Section
 function QuestSection({ 
   title, 
   subtitle, 
@@ -150,13 +146,11 @@ function QuestSection({
 
   return (
     <div className="mb-8">
-      {/* Section Header */}
       <div className="text-center mb-6">
         <h3 className="text-crypto-green font-bold text-sm uppercase tracking-widest mb-1">{title}</h3>
         <p className="text-white/40 text-xs">{subtitle}</p>
       </div>
 
-      {/* Quest Card */}
       <div className="bg-nomad-card/50 backdrop-blur-sm rounded-2xl border border-white/5 p-6">
         <div className="divide-y divide-white/5">
           {quests.map((quest, index) => (
@@ -177,7 +171,7 @@ function QuestSection({
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState('quests');
-  const { user, setUser } = useAppStore();
+  const { user } = useAppStore();
   const wallet = user?.wallet || null;
   
   const [quests, setQuests] = useState<Quest[]>([]);
@@ -185,19 +179,29 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch quests
+  // IMPORTANT: Always fetch quests on mount, regardless of wallet
+  useEffect(() => {
+    console.log('Profile mounted, fetching quests...'); // DEBUG
+    fetchQuests();
+  }, []);
+
+  // Fetch quests function
   const fetchQuests = async () => {
     try {
       setLoading(true);
       setError(null);
       
+      console.log('Calling /api/quests...'); // DEBUG
+      
       const res = await fetch('/api/quests');
       const data = await res.json();
+      
+      console.log('Quests API response:', data); // DEBUG
       
       if (data.success) {
         setQuests(data.quests || []);
         // Fetch user quest statuses if wallet connected
-        if (wallet) {
+        if (wallet && data.quests?.length > 0) {
           fetchUserQuestStatuses(data.quests.map((q: Quest) => q.id));
         }
       } else {
@@ -225,10 +229,6 @@ export default function ProfilePage() {
       console.error('Failed to fetch quest statuses:', error);
     }
   };
-
-  useEffect(() => {
-    fetchQuests();
-  }, []);
 
   // Re-fetch statuses when wallet connects
   useEffect(() => {
@@ -277,13 +277,6 @@ export default function ProfilePage() {
       
       if (res.ok) {
         setQuestStatuses(prev => ({ ...prev, [questId]: 'claimed' }));
-        // Update user XP in store
-        if (user && data.xpEarned) {
-          setUser({
-            ...user,
-            xp: (user.xp || 0) + data.xpEarned
-          });
-        }
       } else {
         alert(data.error || 'Failed to claim XP');
       }
@@ -308,28 +301,6 @@ export default function ProfilePage() {
       return acc + (quest?.xpReward || 0);
     }, 0);
 
-  if (!wallet) {
-    return (
-      <div className="min-h-screen bg-nomad-black flex items-center justify-center pt-20">
-        <div className="text-center">
-          <Wallet className="w-16 h-16 text-crypto-green mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">Connect Wallet</h2>
-          <p className="text-white/50 mb-6">Please connect your wallet to view and complete quests</p>
-          <button 
-            onClick={() => {
-              // Trigger wallet connection from header
-              const event = new CustomEvent('connectWallet');
-              window.dispatchEvent(event);
-            }}
-            className="px-6 py-3 bg-crypto-green text-nomad-dark rounded-xl font-bold hover:bg-crypto-green/90 transition-colors"
-          >
-            Connect Wallet
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-nomad-black text-white pt-24 pb-12">
       <div className="max-w-4xl mx-auto px-4">
@@ -343,21 +314,36 @@ export default function ProfilePage() {
           Back to Home
         </Link>
 
-        {/* User Stats */}
-        <div className="bg-nomad-card/30 rounded-2xl p-6 mb-8 border border-white/5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white/50 text-sm mb-1">Total XP Earned</p>
-              <p className="text-3xl font-bold text-crypto-green">{claimedXp} <span className="text-lg text-white/50">/ {totalXp}</span></p>
-            </div>
-            <div className="text-right">
-              <p className="text-white/50 text-sm mb-1">Quests Completed</p>
-              <p className="text-3xl font-bold text-white">
-                {Object.values(questStatuses).filter(s => s === 'claimed').length} <span className="text-lg text-white/50">/ {quests.length}</span>
-              </p>
+        {/* User Stats - Only show if wallet connected */}
+        {wallet && (
+          <div className="bg-nomad-card/30 rounded-2xl p-6 mb-8 border border-white/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-white/50 text-sm mb-1">Total XP Earned</p>
+                <p className="text-3xl font-bold text-crypto-green">{claimedXp} <span className="text-lg text-white/50">/ {totalXp}</span></p>
+              </div>
+              <div className="text-right">
+                <p className="text-white/50 text-sm mb-1">Quests Completed</p>
+                <p className="text-3xl font-bold text-white">
+                  {Object.values(questStatuses).filter(s => s === 'claimed').length} <span className="text-lg text-white/50">/ {quests.length}</span>
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Connect Wallet Banner - if no wallet */}
+        {!wallet && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-8 text-yellow-400 text-sm flex items-center justify-between">
+            <span>Connect wallet to complete quests and earn XP</span>
+            <button 
+              onClick={() => window.dispatchEvent(new CustomEvent('connectWallet'))}
+              className="px-4 py-2 bg-crypto-green text-nomad-dark rounded-lg font-bold text-xs"
+            >
+              Connect
+            </button>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
@@ -404,6 +390,11 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div>
+                {/* Debug info - remove after fix */}
+                <div className="text-xs text-white/30 mb-4">
+                  Total quests loaded: {quests.length} | Essential: {essentialQuests.length} | Team: {teamQuests.length}
+                </div>
+
                 {/* Essential Quests */}
                 <QuestSection 
                   title="Essential Quest"
@@ -457,8 +448,14 @@ export default function ProfilePage() {
           <div className="text-center py-12">
             <User className="w-16 h-16 mx-auto mb-4 text-white/20" />
             <h3 className="text-xl font-bold mb-2">Traveler Profile</h3>
-            <p className="text-white/50">Wallet: {wallet.slice(0, 6)}...{wallet.slice(-4)}</p>
-            <p className="text-crypto-green mt-2">{claimedXp} XP Earned</p>
+            {wallet ? (
+              <>
+                <p className="text-white/50">Wallet: {wallet.slice(0, 6)}...{wallet.slice(-4)}</p>
+                <p className="text-crypto-green mt-2">{claimedXp} XP Earned</p>
+              </>
+            ) : (
+              <p className="text-white/50">Connect wallet to view profile</p>
+            )}
           </div>
         )}
 
