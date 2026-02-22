@@ -10,9 +10,6 @@ import {
   Share2, 
   Users, 
   ArrowLeft,
-  Hexagon,
-  Globe,
-  Calendar,
   ExternalLink,
   Loader2
 } from 'lucide-react';
@@ -37,14 +34,12 @@ interface Quest {
   isActive: boolean;
 }
 
-// QuestCard Component Props
 interface QuestCardProps {
   quest: Quest;
   wallet: string | null;
   index: number;
 }
 
-// QuestCard Component
 function QuestCard({ quest, wallet, index }: QuestCardProps) {
   const [status, setStatus] = useState<'pending' | 'completed' | 'claimed'>('pending');
   const [loading, setLoading] = useState(false);
@@ -100,31 +95,25 @@ function QuestCard({ quest, wallet, index }: QuestCardProps) {
           {index + 1}
         </div>
         <div>
-          <h5 className="font-medium">{quest.title}</h5>
+          <h5 className="font-medium text-white">{quest.title}</h5>
           <p className="text-sm text-nomad-gray">{quest.description}</p>
         </div>
       </div>
       <div className="flex items-center gap-3">
         <span className="text-sm text-crypto-green font-medium">+{quest.xpReward} XP</span>
         
-        {/* Link to external quest */}
         {quest.link && status === 'pending' && (
           <a 
             href={quest.link}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 px-3 py-1.5 bg-crypto-green/20 text-crypto-green rounded-lg text-xs hover:bg-crypto-green/30 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              window.open(quest.link, '_blank');
-            }}
           >
             <ExternalLink className="w-3 h-3" />
             Start
           </a>
         )}
 
-        {/* Complete button */}
         {status === 'pending' && (
           <button
             onClick={completeQuest}
@@ -135,7 +124,6 @@ function QuestCard({ quest, wallet, index }: QuestCardProps) {
           </button>
         )}
 
-        {/* Claim XP button */}
         {status === 'completed' && (
           <button
             onClick={claimXp}
@@ -146,7 +134,6 @@ function QuestCard({ quest, wallet, index }: QuestCardProps) {
           </button>
         )}
 
-        {/* Claimed status */}
         {status === 'claimed' && (
           <span className="px-3 py-1.5 bg-nomad-card text-nomad-gray rounded-lg text-xs">
             ✓ Claimed
@@ -157,72 +144,71 @@ function QuestCard({ quest, wallet, index }: QuestCardProps) {
   );
 }
 
-// Main Profile Page Component
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState('profile');
   const [wallet, setWallet] = useState<string | null>(null);
   const [quests, setQuests] = useState<Quest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Connect wallet function
-  const connectWallet = async () => {
-    if (typeof window !== 'undefined' && (window as any).solana) {
-      try {
-        const response = await (window as any).solana.connect();
-        setWallet(response.publicKey.toString());
-      } catch (err) {
-        console.error('Wallet connection failed:', err);
+  // Wallet connection check (from localStorage or parent)
+  useEffect(() => {
+    const savedWallet = localStorage.getItem('wallet');
+    if (savedWallet) {
+      setWallet(savedWallet);
+    }
+  }, []);
+
+  // Listen for wallet connection from header
+  useEffect(() => {
+    const handleWalletConnect = (e: any) => {
+      if (e.detail?.wallet) {
+        setWallet(e.detail.wallet);
+        localStorage.setItem('wallet', e.detail.wallet);
       }
-    } else {
-      alert('Please install Phantom wallet!');
+    };
+    
+    window.addEventListener('walletConnected', handleWalletConnect);
+    return () => window.removeEventListener('walletConnected', handleWalletConnect);
+  }, []);
+
+  // Fetch quests when tab changes to quests
+  useEffect(() => {
+    if (activeTab === 'quests') {
+      fetchQuests();
+    }
+  }, [activeTab]);
+
+  const fetchQuests = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('Fetching quests...'); // Debug
+      
+      const res = await fetch('/api/quests');
+      const data = await res.json();
+      
+      console.log('Quests response:', data); // Debug
+      
+      if (data.success) {
+        setQuests(data.quests || []);
+      } else {
+        setError(data.error || 'Failed to load quests');
+        setQuests([]);
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch quests:', error);
+      setError(error?.message || 'Network error');
+      setQuests([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Fetch quests
-  useEffect(() => {
-    const fetchQuests = async () => {
-      try {
-        const res = await fetch('/api/quests');
-        const data = await res.json();
-        if (data.success) {
-          setQuests(data.quests.filter((q: Quest) => q.isActive));
-        }
-      } catch (error) {
-        console.error('Failed to fetch quests:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchQuests();
-  }, []);
-
   return (
-    <div className="min-h-screen bg-nomad-black text-white">
-      {/* Header */}
-      <div className="border-b border-nomad-border">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 text-nomad-gray hover:text-white transition-colors">
-              <ArrowLeft className="w-5 h-5" />
-              <span>Back to Home</span>
-            </Link>
-            
-            {!wallet ? (
-              <button
-                onClick={connectWallet}
-                className="px-4 py-2 bg-crypto-green text-nomad-dark rounded-lg font-medium hover:bg-crypto-green/90 transition-colors"
-              >
-                Connect Wallet
-              </button>
-            ) : (
-              <div className="px-4 py-2 bg-nomad-card rounded-lg text-sm font-mono">
-                {wallet.slice(0, 4)}...{wallet.slice(-4)}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-nomad-black text-white pt-20">
+      {/* Header removed - already in layout */}
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -253,21 +239,47 @@ export default function ProfilePage() {
           <div className="lg:col-span-3">
             {activeTab === 'quests' && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold">Active Quests</h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold">Active Quests</h2>
+                  <button 
+                    onClick={fetchQuests}
+                    className="text-sm text-crypto-green hover:underline"
+                  >
+                    Refresh
+                  </button>
+                </div>
+                
+                {!wallet && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 text-yellow-400 text-sm">
+                    Please connect your wallet to complete quests
+                  </div>
+                )}
                 
                 {loading ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-crypto-green" />
                   </div>
+                ) : error ? (
+                  <div className="text-center py-12 text-red-400">
+                    <p>Error: {error}</p>
+                    <button 
+                      onClick={fetchQuests}
+                      className="mt-4 px-4 py-2 bg-crypto-green text-nomad-dark rounded-lg"
+                    >
+                      Try Again
+                    </button>
+                  </div>
                 ) : quests.length === 0 ? (
-                  <div className="text-center py-12 text-nomad-gray">
-                    No active quests available
+                  <div className="text-center py-12 text-nomad-gray bg-nomad-card rounded-xl">
+                    <Zap className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No active quests available</p>
+                    <p className="text-sm mt-2">Check back later for new quests!</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {quests.map((quest, index) => (
                       <QuestCard
-                        key={quest._id}
+                        key={quest._id || quest.id}
                         quest={quest}
                         wallet={wallet}
                         index={index}
@@ -287,6 +299,11 @@ export default function ProfilePage() {
                   </div>
                   <h3 className="text-xl font-bold mb-2">Traveler</h3>
                   <p className="text-nomad-gray">Start completing quests to earn XP and badges!</p>
+                  {wallet && (
+                    <p className="text-xs text-crypto-green mt-4 font-mono">
+                      {wallet.slice(0, 6)}...{wallet.slice(-4)}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
