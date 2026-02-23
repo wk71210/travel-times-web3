@@ -4,82 +4,184 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/lib/stores/appStore';
 import Link from 'next/link';
-import { Search, MapPin, Star, ArrowRight } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
+import dynamic from 'next/dynamic';
+import Navbar from '@/components/Navbar';
+
+// Dynamic import for Earth component (client-side only)
+const EarthCanvas = dynamic(() => import('@/components/Earth'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[400px] md:h-[500px] lg:h-[600px] flex items-center justify-center">
+      <div className="w-32 h-32 border-2 border-crypto-green/30 rounded-full animate-pulse"></div>
+    </div>
+  ),
+});
 
 export default function HomePage() {
   const router = useRouter();
   const { user, isAdmin } = useAppStore();
 
   useEffect(() => {
-    // Agar user connected hai toh
     if (user?.wallet) {
-      // Agar admin hai toh admin panel pe bhejo
       if (isAdmin) {
         router.push('/admin');
       } else {
-        // Normal user hai toh profile pe bhejo
         router.push('/profile');
       }
     }
   }, [user, isAdmin, router]);
 
   return (
-    <div className="min-h-screen bg-nomad-dark text-white">
+    <div className="min-h-screen bg-nomad-dark text-white overflow-x-hidden">
+      <Navbar />
+      
       {/* Hero Section */}
-      <div className="max-w-7xl mx-auto px-4 pt-20 pb-16 text-center">
-        <h1 className="text-5xl md:text-7xl font-bold mb-6">
-          SPEND LESS AND EARN
-          <br />
-          <span className="text-crypto-green">WHILE TRAVELING</span>
-        </h1>
-        <p className="text-nomad-gray text-lg mb-8 max-w-2xl mx-auto">
-          Book with crypto and save up to 60% on 1M+ stays worldwide
-        </p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 md:pt-32 pb-16">
+        <div className="text-center">
+          {/* Main Heading */}
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-4 md:mb-6 leading-tight"
+          >
+            SPEND LESS AND EARN
+            <br />
+            <span className="text-crypto-green">WHILE TRAVELING</span>
+          </motion.h1>
+          
+          {/* Subtitle */}
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="text-nomad-gray text-base sm:text-lg mb-8 md:mb-12 max-w-2xl mx-auto px-4"
+          >
+            Book with crypto and save up to 60% on 1M+ stays worldwide
+          </motion.p>
 
-        {/* Search Box */}
-        <div className="max-w-2xl mx-auto mb-12">
-          <div className="flex items-center gap-2 p-2 bg-nomad-card rounded-xl border border-nomad-border">
-            <div className="px-4 py-2 bg-crypto-green/10 text-crypto-green rounded-lg text-sm font-medium">
-              AI MODE
+          {/* Search Box */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="max-w-2xl mx-auto mb-8 md:mb-12 px-4"
+          >
+            <div className="flex items-center gap-2 p-2 bg-nomad-card rounded-xl border border-nomad-border">
+              <div className="px-3 py-2 bg-crypto-green/10 text-crypto-green rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1">
+                <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">AI MODE</span>
+                <span className="sm:hidden">AI</span>
+              </div>
+              <input 
+                type="text" 
+                placeholder="Where to?"
+                className="flex-1 bg-transparent outline-none text-white placeholder-nomad-gray px-2 sm:px-4 text-sm sm:text-base"
+              />
+              <Link 
+                href="/bookings"
+                className="p-2 sm:p-3 bg-white rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-nomad-dark" />
+              </Link>
             </div>
-            <input 
-              type="text" 
-              placeholder="Where to?"
-              className="flex-1 bg-transparent outline-none text-white placeholder-nomad-gray px-4"
-            />
-            <Link 
-              href="/bookings"
-              className="p-3 bg-white rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              <ArrowRight className="w-5 h-5 text-nomad-dark" />
-            </Link>
-          </div>
-        </div>
+          </motion.div>
 
-        {/* Globe Animation Placeholder */}
-        <div className="relative w-64 h-64 mx-auto mb-12">
-          <div className="absolute inset-0 bg-crypto-green/20 rounded-full animate-pulse"></div>
-          <div className="absolute inset-4 bg-crypto-green/30 rounded-full"></div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-32 h-32 border-2 border-crypto-green rounded-full flex items-center justify-center">
-              <div className="w-24 h-24 border border-crypto-green/50 rounded-full"></div>
+          {/* 3D Earth Animation */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1, delay: 0.6 }}
+            className="relative mb-8 md:mb-12"
+          >
+            <EarthCanvas />
+            
+            {/* Floating Labels */}
+            <div className="absolute top-1/4 left-1/4 hidden lg:block">
+              <motion.div 
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 3, repeat: Infinity }}
+                className="bg-nomad-card/80 backdrop-blur px-3 py-1 rounded-full border border-nomad-border text-xs"
+              >
+                🌴 Bali
+              </motion.div>
             </div>
-          </div>
-        </div>
+            <div className="absolute top-1/3 right-1/4 hidden lg:block">
+              <motion.div 
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 4, repeat: Infinity, delay: 1 }}
+                className="bg-nomad-card/80 backdrop-blur px-3 py-1 rounded-full border border-nomad-border text-xs"
+              >
+                🗽 New York
+              </motion.div>
+            </div>
+            <div className="absolute bottom-1/3 left-1/3 hidden lg:block">
+              <motion.div 
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 3.5, repeat: Infinity, delay: 0.5 }}
+                className="bg-nomad-card/80 backdrop-blur px-3 py-1 rounded-full border border-nomad-border text-xs"
+              >
+                🗼 Paris
+              </motion.div>
+            </div>
+          </motion.div>
 
-        {/* Badges */}
-        <div className="flex flex-wrap justify-center gap-4">
-          <div className="px-4 py-2 bg-nomad-card rounded-full border border-nomad-border text-sm">
-            🏆 Winner Solana Hackathon
-          </div>
-          <div className="px-4 py-2 bg-nomad-card rounded-full border border-nomad-border text-sm">
-            ⬡ Supported by Solana
-          </div>
-          <div className="px-4 py-2 bg-nomad-card rounded-full border border-nomad-border text-sm">
-            ◉ Circle Alliance Member
-          </div>
+          {/* Badges */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
+            className="flex flex-wrap justify-center gap-3 sm:gap-4 px-4"
+          >
+            <div className="px-3 sm:px-4 py-2 bg-nomad-card rounded-full border border-nomad-border text-xs sm:text-sm flex items-center gap-2">
+              <span>🏆</span>
+              <span className="hidden sm:inline">Winner Solana Hackathon</span>
+              <span className="sm:hidden">Solana Winner</span>
+            </div>
+            <div className="px-3 sm:px-4 py-2 bg-nomad-card rounded-full border border-nomad-border text-xs sm:text-sm flex items-center gap-2">
+              <span className="text-crypto-green">⬡</span>
+              <span className="hidden sm:inline">Supported by Solana</span>
+              <span className="sm:hidden">Solana</span>
+            </div>
+            <div className="px-3 sm:px-4 py-2 bg-nomad-card rounded-full border border-nomad-border text-xs sm:text-sm flex items-center gap-2">
+              <span className="text-crypto-green">◉</span>
+              <span className="hidden sm:inline">Circle Alliance Member</span>
+              <span className="sm:hidden">Circle</span>
+            </div>
+          </motion.div>
         </div>
       </div>
+
+      {/* Stats Section */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        transition={{ duration: 0.8 }}
+        className="border-t border-nomad-border bg-nomad-card/30"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+            <div className="text-center">
+              <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-crypto-green mb-1">1M+</div>
+              <div className="text-nomad-gray text-xs sm:text-sm">Stays Worldwide</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-crypto-green mb-1">60%</div>
+              <div className="text-nomad-gray text-xs sm:text-sm">Average Savings</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-crypto-green mb-1">50K+</div>
+              <div className="text-nomad-gray text-xs sm:text-sm">Happy Travelers</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-crypto-green mb-1">100+</div>
+              <div className="text-nomad-gray text-xs sm:text-sm">Countries</div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
