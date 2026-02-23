@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAppStore } from '@/lib/stores/appStore';
 import Link from 'next/link';
 import { ArrowRight, Sparkles, Zap, Menu, X } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -17,41 +18,37 @@ const EarthCanvas = dynamic(() => import('@/components/Earth'), {
   ),
 });
 
-// Simple wallet connect button component
-function WalletButton() {
-  const [mounted, setMounted] = useState(false);
-  
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <button className="px-4 py-2 bg-crypto-green text-nomad-dark rounded-lg text-sm font-medium">
-        Connect
-      </button>
-    );
-  }
-
-  return (
-    <button className="px-4 py-2 bg-crypto-green text-nomad-dark rounded-lg text-sm font-medium hover:bg-crypto-green/90 transition-colors">
-      Connect Wallet
-    </button>
-  );
-}
-
 export default function HomePage() {
   const router = useRouter();
+  const { user, isAdmin, connect, disconnect } = useAppStore();
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (user?.wallet) {
+      if (isAdmin) {
+        router.push('/admin');
+      } else {
+        router.push('/profile');
+      }
+    }
+  }, [user, isAdmin, router]);
+
+  const handleConnect = async () => {
+    try {
+      await connect();
+    } catch (error) {
+      console.error('Failed to connect:', error);
+    }
+  };
+
+  const xpDisplay = user?.xp ? `${(user.xp / 1000).toFixed(1)}k` : '0';
+  const boostDisplay = user?.boost || '4.0x';
 
   return (
     <div className="min-h-screen bg-nomad-dark text-white overflow-x-hidden">
-      {/* Header - Inline, No imports */}
+      {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-nomad-dark/80 backdrop-blur-md border-b border-nomad-border">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -80,7 +77,39 @@ export default function HomePage() {
 
             {/* Right Side */}
             <div className="flex items-center gap-3">
-              <WalletButton />
+              {mounted && user?.wallet && (
+                <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-nomad-card border border-white/10 rounded-lg">
+                  <span className="text-crypto-green text-sm font-medium">{boostDisplay}</span>
+                  <Zap className="w-3 h-3 text-crypto-green" />
+                  <span className="text-white text-sm font-medium">{xpDisplay} XP</span>
+                </div>
+              )}
+              
+              {mounted && isAdmin && (
+                <Link 
+                  href="/admin" 
+                  className="hidden md:block text-sm text-crypto-green hover:text-crypto-green/80 transition-colors px-3 py-1.5 border border-crypto-green rounded-lg"
+                >
+                  ADMIN
+                </Link>
+              )}
+              
+              {/* Wallet Button */}
+              {mounted && user?.wallet ? (
+                <button
+                  onClick={disconnect}
+                  className="px-4 py-2 bg-nomad-card border border-nomad-border text-white rounded-lg text-sm hover:bg-nomad-border transition-colors"
+                >
+                  {user.wallet.slice(0, 4)}...{user.wallet.slice(-4)}
+                </button>
+              ) : (
+                <button
+                  onClick={handleConnect}
+                  className="px-4 py-2 bg-crypto-green text-nomad-dark rounded-lg text-sm font-medium hover:bg-crypto-green/90 transition-colors"
+                >
+                  Connect Wallet
+                </button>
+              )}
               
               {/* Mobile Menu Button */}
               <button 
@@ -105,6 +134,22 @@ export default function HomePage() {
                 <Link href="/events" className="text-sm text-white/70 hover:text-white py-2" onClick={() => setMobileMenuOpen(false)}>
                   Events
                 </Link>
+                {isAdmin && (
+                  <Link href="/admin" className="text-sm text-crypto-green py-2" onClick={() => setMobileMenuOpen(false)}>
+                    Admin
+                  </Link>
+                )}
+                {user?.wallet && (
+                  <button
+                    onClick={() => {
+                      disconnect();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="text-sm text-white/70 py-2 text-left"
+                  >
+                    Disconnect
+                  </button>
+                )}
               </nav>
             </div>
           )}
