@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { ArrowRight, Sparkles, Zap, Menu, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
+import WalletConnect from '@/components/WalletConnect';
 
 // Dynamic import for Earth component
 const EarthCanvas = dynamic(() => import('@/components/Earth'), {
@@ -20,7 +21,7 @@ const EarthCanvas = dynamic(() => import('@/components/Earth'), {
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, isAdmin, connect, disconnect } = useAppStore();
+  const { user, isAdmin } = useAppStore();
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -35,16 +36,8 @@ export default function HomePage() {
     }
   }, [user, isAdmin, router]);
 
-  const handleConnect = async () => {
-    try {
-      await connect();
-    } catch (error) {
-      console.error('Failed to connect:', error);
-    }
-  };
-
   const xpDisplay = user?.xp ? `${(user.xp / 1000).toFixed(1)}k` : '0';
-  const boostDisplay = user?.boost || '4.0x';
+  const boostDisplay = user?.boost ? `${user.boost}x` : '1.0x';
 
   return (
     <div className="min-h-screen bg-nomad-dark text-white overflow-x-hidden">
@@ -94,22 +87,8 @@ export default function HomePage() {
                 </Link>
               )}
               
-              {/* Wallet Button */}
-              {mounted && user?.wallet ? (
-                <button
-                  onClick={disconnect}
-                  className="px-4 py-2 bg-nomad-card border border-nomad-border text-white rounded-lg text-sm hover:bg-nomad-border transition-colors"
-                >
-                  {user.wallet.slice(0, 4)}...{user.wallet.slice(-4)}
-                </button>
-              ) : (
-                <button
-                  onClick={handleConnect}
-                  className="px-4 py-2 bg-crypto-green text-nomad-dark rounded-lg text-sm font-medium hover:bg-crypto-green/90 transition-colors"
-                >
-                  Connect Wallet
-                </button>
-              )}
+              {/* Wallet Connect Component */}
+              <WalletConnect />
               
               {/* Mobile Menu Button */}
               <button 
@@ -138,17 +117,6 @@ export default function HomePage() {
                   <Link href="/admin" className="text-sm text-crypto-green py-2" onClick={() => setMobileMenuOpen(false)}>
                     Admin
                   </Link>
-                )}
-                {user?.wallet && (
-                  <button
-                    onClick={() => {
-                      disconnect();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="text-sm text-white/70 py-2 text-left"
-                  >
-                    Disconnect
-                  </button>
                 )}
               </nav>
             </div>
