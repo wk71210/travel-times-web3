@@ -257,6 +257,28 @@ export default function AdminPage() {
     }
   };
 
+  // FIX: Date format helper function
+  const formatDateForAPI = (dateString: string): string => {
+    if (!dateString) return '';
+    
+    try {
+      // If it's already in ISO format, return as is
+      if (dateString.includes('T')) {
+        return new Date(dateString).toISOString();
+      }
+      
+      // Otherwise, create a proper ISO string
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        throw new Error('Invalid date');
+      }
+      return date.toISOString();
+    } catch (error) {
+      console.error('Date formatting error:', error);
+      return new Date().toISOString(); // Fallback to current date
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -293,18 +315,24 @@ export default function AdminPage() {
         };
       } else if (modalType === 'event') {
         endpoint = '/api/admin/events';
+        
+        // FIX: Properly format the date
+        const formattedDate = formatDateForAPI(formData.eventDate);
+        
         payload = {
           id: editingItem?.id,
           title: formData.eventTitle,
           description: formData.eventDescription,
           location: formData.eventLocation,
-          date: formData.eventDate,
+          date: formattedDate, // FIX: Send properly formatted ISO date
           price: Number(formData.eventPrice),
           originalPrice: formData.eventOriginalPrice ? Number(formData.eventOriginalPrice) : undefined,
           capacity: Number(formData.eventCapacity),
           xpReward: Number(formData.eventXp),
           image: formData.eventImage
         };
+        
+        console.log('Event payload:', payload); // Debug log
       }
 
       const res = await fetch(endpoint, {
@@ -319,7 +347,8 @@ export default function AdminPage() {
         fetchData();
       } else {
         const error = await res.json();
-        alert(error.error || 'Failed to save');
+        console.error('API Error:', error); // Debug log
+        alert(error.error || error.message || 'Failed to save');
       }
     } catch (error) {
       console.error('Failed to save:', error);
@@ -410,12 +439,15 @@ export default function AdminPage() {
       }));
     } else if (type === 'event') {
       const event = item as Event;
+      // FIX: Format date for datetime-local input
+      const dateValue = event.date ? new Date(event.date).toISOString().slice(0, 16) : '';
+      
       setFormData(prev => ({
         ...prev,
         eventTitle: event.title,
         eventDescription: event.description,
         eventLocation: event.location,
-        eventDate: event.date ? new Date(event.date).toISOString().slice(0, 16) : '',
+        eventDate: dateValue,
         eventPrice: event.price.toString(),
         eventOriginalPrice: event.originalPrice?.toString() || '',
         eventCapacity: event.capacity.toString(),
