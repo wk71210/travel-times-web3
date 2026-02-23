@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Calendar, MapPin, Users, Star } from 'lucide-react';
+import { Calendar, MapPin, Users } from 'lucide-react';
 
 interface Event {
   _id: string;
@@ -22,7 +22,6 @@ interface Event {
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchEvents();
@@ -31,7 +30,6 @@ export default function EventsPage() {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      // Fetch all active events - isActive filter hata diya agar sab events chahiye
       const res = await fetch('/api/events');
       
       if (!res.ok) {
@@ -39,14 +37,13 @@ export default function EventsPage() {
       }
       
       const data = await res.json();
-      console.log('Fetched events:', data); // Debug ke liye
+      console.log('Fetched events:', data);
       
-      // Filter active events only
-      const activeEvents = data.filter((event: Event) => event.isActive !== false);
-      setEvents(activeEvents);
+      // Handle both formats: direct array or { events: [...] }
+      const eventsArray = Array.isArray(data) ? data : data.events || [];
+      setEvents(eventsArray);
     } catch (err) {
-      console.error('Error fetching events:', err);
-      setError('Failed to load events');
+      console.error('Error:', err);
     } finally {
       setLoading(false);
     }
@@ -56,14 +53,6 @@ export default function EventsPage() {
     return (
       <div className="min-h-screen bg-nomad-dark flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-crypto-green"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-nomad-dark flex items-center justify-center text-red-500">
-        {error}
       </div>
     );
   }
@@ -82,28 +71,23 @@ export default function EventsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map((event) => (
-              <div key={event.id} className="bg-nomad-card rounded-xl border border-nomad-border overflow-hidden hover:border-crypto-green/50 transition-colors">
-                {/* Event Image */}
+              <div key={event.id} className="bg-nomad-card rounded-xl border border-nomad-border overflow-hidden">
                 <div className="aspect-video bg-nomad-dark relative">
                   {event.images && event.images[0] ? (
-                    <img 
-                      src={event.images[0]} 
-                      alt={event.title}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={event.images[0]} alt={event.title} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-nomad-gray">
                       <Calendar className="w-12 h-12" />
                     </div>
                   )}
-                  <div className="absolute top-2 right-2 px-2 py-1 bg-crypto-green/20 text-crypto-green rounded text-xs font-medium">
+                  <div className="absolute top-2 right-2 px-2 py-1 bg-crypto-green/20 text-crypto-green rounded text-xs">
                     {event.xpReward} XP
                   </div>
                 </div>
 
                 <div className="p-4">
                   <h3 className="text-lg font-semibold text-white mb-1">{event.title}</h3>
-                  <p className="text-sm text-nomad-gray mb-3 line-clamp-2">{event.description}</p>
+                  <p className="text-sm text-nomad-gray mb-3">{event.description}</p>
                   
                   <div className="space-y-2 text-sm text-nomad-gray">
                     <div className="flex items-center gap-2">
