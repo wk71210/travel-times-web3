@@ -1,48 +1,63 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAppStore } from '@/lib/stores/appStore';
 import { 
-  X, Upload, ChevronLeft, ChevronRight, Plus, 
-  Trash2, Edit2, MapPin, Star, Bed, Users, 
-  Calendar, DollarSign, Image as ImageIcon 
+  Shield, Users, Hotel, Settings, Plus, Edit, Trash2, Loader2, X, 
+  ExternalLink, Upload, ChevronLeft, ChevronRight, Calendar, MapPin 
 } from 'lucide-react';
 
-// Types
 interface Hotel {
+  _id: string;
   id: string;
   name: string;
-  description: string;
   location: string;
-  price: number;
-  rating: number;
-  rooms: number;
-  guests: number;
-  images: string[];
+  description: string;
+  originalPrice: number;
+  discountedPrice: number;
+  xpReward: number;
   amenities: string[];
-  createdAt: string;
+  images: string[];
+  isActive: boolean;
 }
 
-interface Event {
+interface Quest {
+  _id: string;
   id: string;
   title: string;
   description: string;
-  date: string;
-  time: string;
+  type: 'essential' | 'daily' | 'special';
+  xpReward: number;
+  cost: number;
+  link?: string;
+  isActive: boolean;
+}
+
+interface Event {
+  _id: string;
+  id: string;
+  title: string;
+  description: string;
   location: string;
+  date: string;
   price: number;
+  originalPrice?: number;
   capacity: number;
+  booked: number;
+  xpReward: number;
   images: string[];
-  hotelId?: string;
-  createdAt: string;
+  isActive: boolean;
 }
 
-// Image Upload Component
-interface ImageUploadProps {
-  images: string[];
-  onImagesChange: (images: string[]) => void;
-}
-
-function ImageUpload({ images, onImagesChange }: ImageUploadProps) {
+// Image Upload Component with Slideshow
+function ImageUpload({ 
+  images, 
+  onImagesChange 
+}: { 
+  images: string[]; 
+  onImagesChange: (images: string[]) => void 
+}) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,45 +83,32 @@ function ImageUpload({ images, onImagesChange }: ImageUploadProps) {
     }
   };
 
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % images.length);
-  };
-
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + images.length) % images.length);
-  };
+  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % images.length);
+  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + images.length) % images.length);
 
   return (
     <div className="space-y-4">
+      {/* Slideshow */}
       {images.length > 0 && (
-        <div className="relative bg-gray-900 rounded-xl overflow-hidden aspect-video">
+        <div className="relative bg-nomad-dark rounded-xl overflow-hidden aspect-video">
           <img 
             src={images[currentSlide]} 
-            alt={`Image ${currentSlide + 1}`}
+            alt={`Slide ${currentSlide + 1}`}
             className="w-full h-full object-cover"
           />
           
           {images.length > 1 && (
             <>
-              <button
-                onClick={prevSlide}
-                className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
-              >
+              <button onClick={prevSlide} className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white">
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <button
-                onClick={nextSlide}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
-              >
+              <button onClick={nextSlide} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white">
                 <ChevronRight className="w-5 h-5" />
               </button>
             </>
           )}
 
-          <button
-            onClick={() => removeImage(currentSlide)}
-            className="absolute top-2 right-2 p-2 bg-red-500/80 hover:bg-red-500 rounded-full text-white transition-colors"
-          >
+          <button onClick={() => removeImage(currentSlide)} className="absolute top-2 right-2 p-2 bg-red-500/80 hover:bg-red-500 rounded-full text-white">
             <X className="w-4 h-4" />
           </button>
 
@@ -116,33 +118,24 @@ function ImageUpload({ images, onImagesChange }: ImageUploadProps) {
         </div>
       )}
 
+      {/* Upload Options */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            accept="image/*"
-            multiple
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full p-4 border-2 border-dashed border-gray-600 hover:border-emerald-500 rounded-xl transition-colors flex flex-col items-center gap-2 bg-gray-800"
-          >
-            <Upload className="w-6 h-6 text-gray-400" />
-            <span className="text-sm text-gray-400">Upload from Computer</span>
-            <span className="text-xs text-gray-500">Multiple images allowed</span>
+          <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" multiple className="hidden" />
+          <button onClick={() => fileInputRef.current?.click()} className="w-full p-4 border-2 border-dashed border-nomad-border hover:border-crypto-green rounded-xl transition-colors flex flex-col items-center gap-2">
+            <Upload className="w-6 h-6 text-nomad-gray" />
+            <span className="text-sm text-nomad-gray">Upload Images</span>
+            <span className="text-xs text-nomad-gray/50">Multiple allowed</span>
           </button>
         </div>
 
-        <div className="p-4 border border-gray-600 rounded-xl bg-gray-800">
-          <label className="block text-sm text-gray-400 mb-2">Add Image URL</label>
+        <div className="p-4 border border-nomad-border rounded-xl">
+          <label className="block text-sm text-nomad-gray mb-2">Add Image URL</label>
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="https://example.com/image.jpg"
-              className="flex-1 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-sm outline-none focus:border-emerald-500 text-white"
+              placeholder="https://..."
+              className="flex-1 px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-sm outline-none focus:border-crypto-green"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   const url = e.currentTarget.value.trim();
@@ -162,7 +155,7 @@ function ImageUpload({ images, onImagesChange }: ImageUploadProps) {
                   input.value = '';
                 }
               }}
-              className="px-3 py-2 bg-emerald-500 text-gray-900 rounded-lg text-sm font-medium hover:bg-emerald-400"
+              className="px-3 py-2 bg-crypto-green text-nomad-dark rounded-lg text-sm font-medium"
             >
               Add
             </button>
@@ -170,15 +163,14 @@ function ImageUpload({ images, onImagesChange }: ImageUploadProps) {
         </div>
       </div>
 
+      {/* Thumbnails */}
       {images.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-2">
           {images.map((img, idx) => (
             <button
               key={idx}
               onClick={() => setCurrentSlide(idx)}
-              className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${
-                idx === currentSlide ? 'border-emerald-500' : 'border-transparent'
-              }`}
+              className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${idx === currentSlide ? 'border-crypto-green' : 'border-transparent'}`}
             >
               <img src={img} alt="" className="w-full h-full object-cover" />
             </button>
@@ -189,710 +181,592 @@ function ImageUpload({ images, onImagesChange }: ImageUploadProps) {
   );
 }
 
-// Main Admin Panel Component
-export default function AdminPanel() {
-  const [activeTab, setActiveTab] = useState<'hotels' | 'events'>('hotels');
+export default function AdminPage() {
+  const router = useRouter();
+  const { user, isAdmin } = useAppStore();
+
+  const [activeTab, setActiveTab] = useState<'quests' | 'hotels' | 'events' | 'settings'>('hotels');
   const [hotels, setHotels] = useState<Hotel[]>([]);
+  const [quests, setQuests] = useState<Quest[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
-  const [showHotelModal, setShowHotelModal] = useState(false);
-  const [showEventModal, setShowEventModal] = useState(false);
-  const [editingHotel, setEditingHotel] = useState<Hotel | null>(null);
-  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState<'hotel' | 'quest' | 'event'>('hotel');
+  const [editingItem, setEditingItem] = useState<Hotel | Quest | Event | null>(null);
 
-  // Hotel Form State
-  const [hotelForm, setHotelForm] = useState({
+  // Form states
+  const [formData, setFormData] = useState({
+    // Hotel
     name: '',
-    description: '',
     location: '',
-    price: '',
-    rating: '',
-    rooms: '',
-    guests: '',
-    images: [] as string[],
-    amenities: [] as string[]
-  });
-
-  // Event Form State
-  const [eventForm, setEventForm] = useState({
+    description: '',
+    originalPrice: '',
+    discountedPrice: '',
+    xpReward: '500',
+    amenities: '',
+    hotelImages: [] as string[],
+    
+    // Quest
     title: '',
-    description: '',
-    date: '',
-    time: '',
-    location: '',
-    price: '',
-    capacity: '',
-    images: [] as string[],
-    hotelId: ''
+    questDescription: '',
+    questType: 'essential',
+    questXp: '100',
+    questCost: '0',
+    questLink: '',
+    
+    // Event
+    eventTitle: '',
+    eventDescription: '',
+    eventLocation: '',
+    eventDate: '',
+    eventPrice: '',
+    eventOriginalPrice: '',
+    eventCapacity: '100',
+    eventXp: '200',
+    eventImages: [] as string[]
   });
 
-  // Load data from localStorage on mount
   useEffect(() => {
-    const savedHotels = localStorage.getItem('hotels');
-    const savedEvents = localStorage.getItem('events');
-    if (savedHotels) setHotels(JSON.parse(savedHotels));
-    if (savedEvents) setEvents(JSON.parse(savedEvents));
-  }, []);
+    if (!user?.wallet) {
+      router.push('/');
+      return;
+    }
+    if (!isAdmin) {
+      router.push('/profile');
+      return;
+    }
+    fetchData();
+  }, [user, isAdmin, router]);
 
-  // Save to localStorage whenever data changes
-  useEffect(() => {
-    localStorage.setItem('hotels', JSON.stringify(hotels));
-  }, [hotels]);
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [hotelsRes, questsRes, eventsRes] = await Promise.all([
+        fetch('/api/hotels'),
+        fetch('/api/quests'),
+        fetch('/api/events')
+      ]);
 
-  useEffect(() => {
-    localStorage.setItem('events', JSON.stringify(events));
-  }, [events]);
+      if (hotelsRes.ok) setHotels(await hotelsRes.json());
+      if (questsRes.ok) setQuests(await questsRes.json());
+      if (eventsRes.ok) setEvents(await eventsRes.json());
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Hotel Handlers
-  const handleHotelSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setLoading(true);
 
     try {
-      if (!hotelForm.name || !hotelForm.location || !hotelForm.price) {
-        throw new Error('Please fill in all required fields');
+      let payload: any = {};
+      let endpoint = '';
+      let method = editingItem ? 'PUT' : 'POST';
+
+      if (modalType === 'hotel') {
+        endpoint = '/api/hotels';
+        payload = {
+          id: editingItem?.id,
+          name: formData.name,
+          location: formData.location,
+          description: formData.description,
+          originalPrice: Number(formData.originalPrice),
+          discountedPrice: Number(formData.discountedPrice),
+          xpReward: Number(formData.xpReward),
+          amenities: formData.amenities.split(',').map(a => a.trim()).filter(Boolean),
+          images: formData.hotelImages,
+          discount: Math.round(((Number(formData.originalPrice) - Number(formData.discountedPrice)) / Number(formData.originalPrice)) * 100)
+        };
+      } else if (modalType === 'quest') {
+        endpoint = '/api/quests';
+        payload = {
+          id: editingItem?.id,
+          title: formData.title,
+          description: formData.questDescription,
+          type: formData.questType,
+          xpReward: Number(formData.questXp),
+          cost: Number(formData.questCost),
+          link: formData.questLink
+        };
+      } else if (modalType === 'event') {
+        endpoint = '/api/events';
+        payload = {
+          id: editingItem?.id,
+          title: formData.eventTitle,
+          description: formData.eventDescription,
+          location: formData.eventLocation,
+          date: formData.eventDate,
+          price: Number(formData.eventPrice),
+          originalPrice: formData.eventOriginalPrice ? Number(formData.eventOriginalPrice) : undefined,
+          capacity: Number(formData.eventCapacity),
+          xpReward: Number(formData.eventXp),
+          images: formData.eventImages,
+          booked: 0
+        };
       }
 
-      const hotelData: Hotel = {
-        id: editingHotel ? editingHotel.id : Date.now().toString(),
-        name: hotelForm.name,
-        description: hotelForm.description,
-        location: hotelForm.location,
-        price: parseFloat(hotelForm.price),
-        rating: parseFloat(hotelForm.rating) || 0,
-        rooms: parseInt(hotelForm.rooms) || 0,
-        guests: parseInt(hotelForm.guests) || 0,
-        images: hotelForm.images,
-        amenities: hotelForm.amenities,
-        createdAt: editingHotel ? editingHotel.createdAt : new Date().toISOString()
-      };
+      const res = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
 
-      if (editingHotel) {
-        setHotels(prev => prev.map(h => h.id === editingHotel.id ? hotelData : h));
+      if (res.ok) {
+        setShowModal(false);
+        resetForm();
+        fetchData();
+        alert(editingItem ? 'Updated successfully!' : 'Created successfully!');
       } else {
-        setHotels(prev => [...prev, hotelData]);
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+        alert(errorData.error || `Failed to ${editingItem ? 'update' : 'create'}`);
       }
-
-      resetHotelForm();
-      setShowHotelModal(false);
-      setEditingHotel(null);
-      alert(editingHotel ? 'Hotel updated successfully!' : 'Hotel created successfully!');
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to save hotel');
+      console.error('Failed to save:', error);
+      alert('Failed to save. Check console for details.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const resetHotelForm = () => {
-    setHotelForm({
-      name: '',
-      description: '',
-      location: '',
-      price: '',
-      rating: '',
-      rooms: '',
-      guests: '',
-      images: [],
-      amenities: []
-    });
-  };
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure?')) return;
 
-  const handleDeleteHotel = (id: string) => {
-    if (confirm('Are you sure you want to delete this hotel?')) {
-      setHotels(prev => prev.filter(h => h.id !== id));
-      // Also delete associated events
-      setEvents(prev => prev.filter(e => e.hotelId !== id));
-    }
-  };
-
-  const handleEditHotel = (hotel: Hotel) => {
-    setEditingHotel(hotel);
-    setHotelForm({
-      name: hotel.name,
-      description: hotel.description,
-      location: hotel.location,
-      price: hotel.price.toString(),
-      rating: hotel.rating.toString(),
-      rooms: hotel.rooms.toString(),
-      guests: hotel.guests.toString(),
-      images: hotel.images,
-      amenities: hotel.amenities
-    });
-    setShowHotelModal(true);
-  };
-
-  // Event Handlers
-  const handleEventSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
+    setLoading(true);
     try {
-      if (!eventForm.title || !eventForm.date || !eventForm.location) {
-        throw new Error('Please fill in all required fields (Title, Date, Location)');
-      }
-
-      const eventData: Event = {
-        id: editingEvent ? editingEvent.id : Date.now().toString(),
-        title: eventForm.title,
-        description: eventForm.description,
-        date: eventForm.date,
-        time: eventForm.time,
-        location: eventForm.location,
-        price: parseFloat(eventForm.price) || 0,
-        capacity: parseInt(eventForm.capacity) || 0,
-        images: eventForm.images,
-        hotelId: eventForm.hotelId || undefined,
-        createdAt: editingEvent ? editingEvent.createdAt : new Date().toISOString()
-      };
-
-      if (editingEvent) {
-        setEvents(prev => prev.map(ev => ev.id === editingEvent.id ? eventData : ev));
+      const endpoint = activeTab === 'hotels' ? '/api/hotels' : 
+                      activeTab === 'quests' ? '/api/quests' : '/api/events';
+      const res = await fetch(`${endpoint}?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchData();
+        alert('Deleted successfully!');
       } else {
-        setEvents(prev => [...prev, eventData]);
+        alert('Failed to delete');
       }
-
-      resetEventForm();
-      setShowEventModal(false);
-      setEditingEvent(null);
-      alert(editingEvent ? 'Event updated successfully!' : 'Event created successfully!');
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to save event');
+      console.error('Delete failed:', error);
+      alert('Delete failed');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const resetEventForm = () => {
-    setEventForm({
-      title: '',
-      description: '',
-      date: '',
-      time: '',
-      location: '',
-      price: '',
-      capacity: '',
-      images: [],
-      hotelId: ''
+  const resetForm = () => {
+    setFormData({
+      name: '', location: '', description: '', originalPrice: '', discountedPrice: '',
+      xpReward: '500', amenities: '', hotelImages: [],
+      title: '', questDescription: '', questType: 'essential', questXp: '100',
+      questCost: '0', questLink: '',
+      eventTitle: '', eventDescription: '', eventLocation: '', eventDate: '',
+      eventPrice: '', eventOriginalPrice: '', eventCapacity: '100', eventXp: '200', eventImages: []
     });
+    setEditingItem(null);
   };
 
-  const handleDeleteEvent = (id: string) => {
-    if (confirm('Are you sure you want to delete this event?')) {
-      setEvents(prev => prev.filter(e => e.id !== id));
+  const openAddModal = (type: 'hotel' | 'quest' | 'event') => {
+    resetForm();
+    setModalType(type);
+    setShowModal(true);
+  };
+
+  const openEditModal = (item: Hotel | Quest | Event, type: 'hotel' | 'quest' | 'event') => {
+    setEditingItem(item);
+    setModalType(type);
+
+    if (type === 'hotel') {
+      const h = item as Hotel;
+      setFormData(prev => ({
+        ...prev,
+        name: h.name, location: h.location, description: h.description,
+        originalPrice: h.originalPrice.toString(), discountedPrice: h.discountedPrice.toString(),
+        xpReward: h.xpReward.toString(), amenities: h.amenities?.join(', ') || '',
+        hotelImages: h.images || []
+      }));
+    } else if (type === 'quest') {
+      const q = item as Quest;
+      setFormData(prev => ({
+        ...prev,
+        title: q.title, questDescription: q.description, questType: q.type,
+        questXp: q.xpReward.toString(), questCost: q.cost.toString(), questLink: q.link || ''
+      }));
+    } else {
+      const e = item as Event;
+      setFormData(prev => ({
+        ...prev,
+        eventTitle: e.title, eventDescription: e.description, eventLocation: e.location,
+        eventDate: e.date.split('T')[0], eventPrice: e.price.toString(),
+        eventOriginalPrice: e.originalPrice?.toString() || '',
+        eventCapacity: e.capacity.toString(), eventXp: e.xpReward.toString(), 
+        eventImages: e.images || []
+      }));
     }
+    setShowModal(true);
   };
 
-  const handleEditEvent = (event: Event) => {
-    setEditingEvent(event);
-    setEventForm({
-      title: event.title,
-      description: event.description,
-      date: event.date,
-      time: event.time,
-      location: event.location,
-      price: event.price.toString(),
-      capacity: event.capacity.toString(),
-      images: event.images,
-      hotelId: event.hotelId || ''
-    });
-    setShowEventModal(true);
-  };
+  if (!user?.wallet || !isAdmin) {
+    return (
+      <div className="min-h-screen bg-nomad-dark flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-crypto-green" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-nomad-dark p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Admin Panel</h1>
-          <div className="flex gap-4">
-            <button
-              onClick={() => setActiveTab('hotels')}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                activeTab === 'hotels' 
-                  ? 'bg-emerald-500 text-gray-900' 
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-              }`}
-            >
-              Hotels ({hotels.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('events')}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                activeTab === 'events' 
-                  ? 'bg-emerald-500 text-gray-900' 
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-              }`}
-            >
-              Events ({events.length})
-            </button>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <Shield className="w-8 h-8 text-crypto-green" />
+            <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
+          </div>
+          <div className="px-4 py-2 bg-crypto-green/10 text-crypto-green rounded-lg text-sm font-mono">
+            {user.wallet.slice(0, 6)}...{user.wallet.slice(-4)}
           </div>
         </div>
 
-        {/* Hotels Tab */}
-        {activeTab === 'hotels' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Hotels Management</h2>
-              <button
-                onClick={() => {
-                  setEditingHotel(null);
-                  resetHotelForm();
-                  setShowHotelModal(true);
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-gray-900 rounded-lg font-medium hover:bg-emerald-400 transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-                Add Hotel
-              </button>
-            </div>
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="p-4 bg-nomad-card rounded-xl border border-nomad-border">
+            <p className="text-nomad-gray text-sm mb-1">Total Hotels</p>
+            <p className="text-3xl font-bold text-crypto-green">{hotels.length}</p>
+          </div>
+          <div className="p-4 bg-nomad-card rounded-xl border border-nomad-border">
+            <p className="text-nomad-gray text-sm mb-1">Total Quests</p>
+            <p className="text-3xl font-bold text-blue-500">{quests.length}</p>
+          </div>
+          <div className="p-4 bg-nomad-card rounded-xl border border-nomad-border">
+            <p className="text-nomad-gray text-sm mb-1">Active Events</p>
+            <p className="text-3xl font-bold text-purple-500">{events.length}</p>
+          </div>
+          <div className="p-4 bg-nomad-card rounded-xl border border-nomad-border">
+            <p className="text-nomad-gray text-sm mb-1">Total Bookings</p>
+            <p className="text-3xl font-bold text-red-500">--</p>
+          </div>
+        </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {hotels.map(hotel => (
-                <div key={hotel.id} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
-                  <div className="aspect-video bg-gray-800 relative">
-                    {hotel.images[0] ? (
-                      <img src={hotel.images[0]} alt={hotel.name} className="w-full h-full object-cover" />
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          {['hotels', 'quests', 'events', 'settings'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab as any)}
+              className={`px-4 py-2 rounded-lg font-medium capitalize flex items-center gap-2 ${
+                activeTab === tab ? 'bg-crypto-green text-nomad-dark' : 'bg-nomad-card border border-nomad-border text-nomad-gray hover:text-white'
+              }`}
+            >
+              {tab === 'hotels' && <Hotel className="w-4 h-4" />}
+              {tab === 'quests' && <Shield className="w-4 h-4" />}
+              {tab === 'events' && <Calendar className="w-4 h-4" />}
+              {tab === 'settings' && <Settings className="w-4 h-4" />}
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div className="bg-nomad-card rounded-xl border border-nomad-border p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-white capitalize">Manage {activeTab}</h2>
+            {activeTab !== 'settings' && (
+              <button 
+                onClick={() => openAddModal(activeTab as any)}
+                className="px-4 py-2 bg-crypto-green text-nomad-dark rounded-lg font-medium flex items-center gap-2 hover:bg-crypto-green/90"
+              >
+                <Plus className="w-4 h-4" />
+                Add {activeTab.slice(0, -1)}
+              </button>
+            )}
+          </div>
+
+          {loading && <div className="text-center py-8 text-nomad-gray">Loading...</div>}
+
+          {/* Hotels */}
+          {!loading && activeTab === 'hotels' && (
+            <div className="space-y-3">
+              {hotels.map((hotel) => (
+                <div key={hotel.id} className="flex items-center justify-between p-4 bg-nomad-dark rounded-lg border border-nomad-border">
+                  <div className="flex items-center gap-4">
+                    {hotel.images?.[0] ? (
+                      <img src={hotel.images[0]} alt="" className="w-16 h-16 rounded-lg object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-600">
-                        <ImageIcon className="w-12 h-12" />
+                      <div className="w-16 h-16 rounded-lg bg-nomad-border flex items-center justify-center">
+                        <Hotel className="w-6 h-6 text-nomad-gray" />
                       </div>
                     )}
-                    <div className="absolute top-2 right-2 flex gap-2">
-                      <button
-                        onClick={() => handleEditHotel(hotel)}
-                        className="p-2 bg-blue-500/80 hover:bg-blue-500 rounded-full text-white transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteHotel(hotel.id)}
-                        className="p-2 bg-red-500/80 hover:bg-red-500 rounded-full text-white transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    <div>
+                      <h3 className="font-medium text-white">{hotel.name}</h3>
+                      <p className="text-sm text-nomad-gray">{hotel.location}</p>
+                      <div className="flex items-center gap-3 mt-1 text-sm">
+                        <span className="text-crypto-green">${hotel.discountedPrice}</span>
+                        <span className="text-nomad-gray line-through">${hotel.originalPrice}</span>
+                        <span className="text-blue-400">{hotel.xpReward} XP</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg mb-1">{hotel.name}</h3>
-                    <p className="text-gray-400 text-sm mb-2 flex items-center gap-1">
-                      <MapPin className="w-4 h-4" />
-                      {hotel.location}
-                    </p>
-                    <div className="flex items-center gap-4 text-sm text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <Star className="w-4 h-4 text-yellow-500" />
-                        {hotel.rating}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Bed className="w-4 h-4" />
-                        {hotel.rooms} rooms
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                        {hotel.guests} guests
-                      </span>
-                    </div>
-                    <p className="mt-2 text-emerald-400 font-semibold">${hotel.price}/night</p>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => openEditModal(hotel, 'hotel')} className="p-2 hover:bg-white/5 rounded-lg text-nomad-gray hover:text-white">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(hotel.id)} className="p-2 hover:bg-white/5 rounded-lg text-nomad-gray hover:text-red-500">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}
+              {hotels.length === 0 && !loading && (
+                <div className="text-center py-8 text-nomad-gray">No hotels found. Click Add Hotel to create one.</div>
+              )}
             </div>
+          )}
 
-            {hotels.length === 0 && (
-              <div className="text-center py-12 text-gray-500">
-                <p>No hotels added yet. Click "Add Hotel" to create one.</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Events Tab */}
-        {activeTab === 'events' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Events Management</h2>
-              <button
-                onClick={() => {
-                  setEditingEvent(null);
-                  resetEventForm();
-                  setShowEventModal(true);
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-gray-900 rounded-lg font-medium hover:bg-emerald-400 transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-                Add Event
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {events.map(event => (
-                <div key={event.id} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
-                  <div className="aspect-video bg-gray-800 relative">
-                    {event.images[0] ? (
-                      <img src={event.images[0]} alt={event.title} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-600">
-                        <Calendar className="w-12 h-12" />
-                      </div>
-                    )}
-                    <div className="absolute top-2 right-2 flex gap-2">
-                      <button
-                        onClick={() => handleEditEvent(event)}
-                        className="p-2 bg-blue-500/80 hover:bg-blue-500 rounded-full text-white transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteEvent(event.id)}
-                        className="p-2 bg-red-500/80 hover:bg-red-500 rounded-full text-white transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+          {/* Quests */}
+          {!loading && activeTab === 'quests' && (
+            <div className="space-y-3">
+              {quests.map((quest) => (
+                <div key={quest.id} className="flex items-center justify-between p-4 bg-nomad-dark rounded-lg border border-nomad-border">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`px-2 py-0.5 rounded text-xs ${
+                        quest.type === 'essential' ? 'bg-crypto-green/20 text-crypto-green' :
+                        quest.type === 'daily' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'
+                      }`}>{quest.type}</span>
+                      <h3 className="font-medium text-white">{quest.title}</h3>
+                    </div>
+                    <p className="text-sm text-nomad-gray">{quest.description}</p>
+                    <div className="flex items-center gap-3 mt-1 text-sm">
+                      <span className="text-crypto-green">{quest.xpReward} XP</span>
+                      {quest.link && (
+                        <a href={quest.link} target="_blank" rel="noopener noreferrer" className="text-purple-400 flex items-center gap-1 hover:underline">
+                          <ExternalLink className="w-3 h-3" /> Link
+                        </a>
+                      )}
                     </div>
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg mb-1">{event.title}</h3>
-                    <p className="text-gray-400 text-sm mb-2 flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      {event.date} {event.time && `at ${event.time}`}
-                    </p>
-                    <p className="text-gray-400 text-sm mb-2 flex items-center gap-1">
-                      <MapPin className="w-4 h-4" />
-                      {event.location}
-                    </p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-emerald-400 font-semibold">
-                        {event.price > 0 ? `$${event.price}` : 'Free'}
-                      </span>
-                      <span className="text-gray-400 text-sm flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                        Capacity: {event.capacity}
-                      </span>
-                    </div>
-                    {event.hotelId && (
-                      <p className="mt-2 text-xs text-gray-500">
-                        Associated with: {hotels.find(h => h.id === event.hotelId)?.name || 'Unknown Hotel'}
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => openEditModal(quest, 'quest')} className="p-2 hover:bg-white/5 rounded-lg text-nomad-gray hover:text-white">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(quest.id)} className="p-2 hover:bg-white/5 rounded-lg text-nomad-gray hover:text-red-500">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {quests.length === 0 && !loading && (
+                <div className="text-center py-8 text-nomad-gray">No quests found.</div>
+              )}
+            </div>
+          )}
+
+          {/* Events */}
+          {!loading && activeTab === 'events' && (
+            <div className="space-y-3">
+              {events.map((event) => (
+                <div key={event.id} className="flex items-center justify-between p-4 bg-nomad-dark rounded-lg border border-nomad-border">
+                  <div className="flex items-center gap-4">
+                    {event.images?.[0] ? (
+                      <img src={event.images[0]} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-nomad-border flex items-center justify-center">
+                        <Calendar className="w-6 h-6 text-nomad-gray" />
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="font-medium text-white">{event.title}</h3>
+                      <p className="text-sm text-nomad-gray flex items-center gap-1">
+                        <MapPin className="w-3 h-3" /> {event.location}
                       </p>
-                    )}
+                      <div className="flex items-center gap-3 mt-1 text-sm">
+                        <span className="text-crypto-green">${event.price}</span>
+                        <span className="text-nomad-gray">{new Date(event.date).toLocaleDateString()}</span>
+                        <span className="text-blue-400">{event.booked}/{event.capacity} booked</span>
+                        <span className="text-purple-400">{event.xpReward} XP</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => openEditModal(event, 'event')} className="p-2 hover:bg-white/5 rounded-lg text-nomad-gray hover:text-white">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(event.id)} className="p-2 hover:bg-white/5 rounded-lg text-nomad-gray hover:text-red-500">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}
+              {events.length === 0 && !loading && (
+                <div className="text-center py-8 text-nomad-gray">No events found. Click Add Event to create one.</div>
+              )}
             </div>
+          )}
 
-            {events.length === 0 && (
-              <div className="text-center py-12 text-gray-500">
-                <p>No events added yet. Click "Add Event" to create one.</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Hotel Modal */}
-        {showHotelModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-gray-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b border-gray-800 flex justify-between items-center sticky top-0 bg-gray-900">
-                <h2 className="text-xl font-semibold">
-                  {editingHotel ? 'Edit Hotel' : 'Add New Hotel'}
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowHotelModal(false);
-                    setEditingHotel(null);
-                    resetHotelForm();
-                  }}
-                  className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <form onSubmit={handleHotelSubmit} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Hotel Name *</label>
-                  <input
-                    type="text"
-                    value={hotelForm.name}
-                    onChange={(e) => setHotelForm({...hotelForm, name: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-emerald-500 outline-none"
-                    placeholder="Enter hotel name"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Description</label>
-                  <textarea
-                    value={hotelForm.description}
-                    onChange={(e) => setHotelForm({...hotelForm, description: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-emerald-500 outline-none h-24"
-                    placeholder="Enter hotel description"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Location *</label>
-                    <input
-                      type="text"
-                      value={hotelForm.location}
-                      onChange={(e) => setHotelForm({...hotelForm, location: e.target.value})}
-                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-emerald-500 outline-none"
-                      placeholder="City, Country"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Price per Night ($) *</label>
-                    <input
-                      type="number"
-                      value={hotelForm.price}
-                      onChange={(e) => setHotelForm({...hotelForm, price: e.target.value})}
-                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-emerald-500 outline-none"
-                      placeholder="0.00"
-                      min="0"
-                      step="0.01"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Rating</label>
-                    <input
-                      type="number"
-                      value={hotelForm.rating}
-                      onChange={(e) => setHotelForm({...hotelForm, rating: e.target.value})}
-                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-emerald-500 outline-none"
-                      placeholder="0-5"
-                      min="0"
-                      max="5"
-                      step="0.1"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Rooms</label>
-                    <input
-                      type="number"
-                      value={hotelForm.rooms}
-                      onChange={(e) => setHotelForm({...hotelForm, rooms: e.target.value})}
-                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-emerald-500 outline-none"
-                      placeholder="Number of rooms"
-                      min="0"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Max Guests</label>
-                    <input
-                      type="number"
-                      value={hotelForm.guests}
-                      onChange={(e) => setHotelForm({...hotelForm, guests: e.target.value})}
-                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-emerald-500 outline-none"
-                      placeholder="Max guests"
-                      min="0"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Images</label>
-                  <ImageUpload 
-                    images={hotelForm.images} 
-                    onImagesChange={(images) => setHotelForm({...hotelForm, images})} 
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Amenities (comma separated)</label>
-                  <input
-                    type="text"
-                    value={hotelForm.amenities.join(', ')}
-                    onChange={(e) => setHotelForm({
-                      ...hotelForm, 
-                      amenities: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
-                    })}
-                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-emerald-500 outline-none"
-                    placeholder="WiFi, Pool, Spa, Restaurant..."
-                  />
-                </div>
-
-                <div className="flex gap-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowHotelModal(false);
-                      setEditingHotel(null);
-                      resetHotelForm();
-                    }}
-                    className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-gray-900 font-medium rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    {isLoading ? 'Saving...' : (editingHotel ? 'Update Hotel' : 'Create Hotel')}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Event Modal */}
-        {showEventModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-gray-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b border-gray-800 flex justify-between items-center sticky top-0 bg-gray-900">
-                <h2 className="text-xl font-semibold">
-                  {editingEvent ? 'Edit Event' : 'Add New Event'}
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowEventModal(false);
-                    setEditingEvent(null);
-                    resetEventForm();
-                  }}
-                  className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <form onSubmit={handleEventSubmit} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Event Title *</label>
-                  <input
-                    type="text"
-                    value={eventForm.title}
-                    onChange={(e) => setEventForm({...eventForm, title: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-emerald-500 outline-none"
-                    placeholder="Enter event title"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Description</label>
-                  <textarea
-                    value={eventForm.description}
-                    onChange={(e) => setEventForm({...eventForm, description: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-emerald-500 outline-none h-24"
-                    placeholder="Enter event description"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Date *</label>
-                    <input
-                      type="date"
-                      value={eventForm.date}
-                      onChange={(e) => setEventForm({...eventForm, date: e.target.value})}
-                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-emerald-500 outline-none"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Time</label>
-                    <input
-                      type="time"
-                      value={eventForm.time}
-                      onChange={(e) => setEventForm({...eventForm, time: e.target.value})}
-                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-emerald-500 outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Location *</label>
-                  <input
-                    type="text"
-                    value={eventForm.location}
-                    onChange={(e) => setEventForm({...eventForm, location: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-emerald-500 outline-none"
-                    placeholder="Event location"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Price ($)</label>
-                    <input
-                      type="number"
-                      value={eventForm.price}
-                      onChange={(e) => setEventForm({...eventForm, price: e.target.value})}
-                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-emerald-500 outline-none"
-                      placeholder="0 for free"
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Capacity</label>
-                    <input
-                      type="number"
-                      value={eventForm.capacity}
-                      onChange={(e) => setEventForm({...eventForm, capacity: e.target.value})}
-                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-emerald-500 outline-none"
-                      placeholder="Max attendees"
-                      min="0"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Associated Hotel (Optional)</label>
-                  <select
-                    value={eventForm.hotelId}
-                    onChange={(e) => setEventForm({...eventForm, hotelId: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-emerald-500 outline-none"
-                  >
-                    <option value="">Select a hotel (optional)</option>
-                    {hotels.map(hotel => (
-                      <option key={hotel.id} value={hotel.id}>{hotel.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Images</label>
-                  <ImageUpload 
-                    images={eventForm.images} 
-                    onImagesChange={(images) => setEventForm({...eventForm, images})} 
-                  />
-                </div>
-
-                <div className="flex gap-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowEventModal(false);
-                      setEditingEvent(null);
-                      resetEventForm();
-                    }}
-                    className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-gray-900 font-medium rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    {isLoading ? 'Saving...' : (editingEvent ? 'Update Event' : 'Create Event')}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+          {activeTab === 'settings' && (
+            <div className="text-center py-12 text-nomad-gray">Platform settings coming soon...</div>
+          )}
+        </div>
       </div>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-nomad-card rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-nomad-border">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">
+                {editingItem ? 'Edit' : 'Add'} {modalType === 'hotel' ? 'Hotel' : modalType === 'quest' ? 'Quest' : 'Event'}
+              </h3>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-white/5 rounded-lg text-nomad-gray">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* HOTEL FORM */}
+              {modalType === 'hotel' && (
+                <>
+                  <ImageUpload 
+                    images={formData.hotelImages} 
+                    onImagesChange={(imgs) => setFormData({...formData, hotelImages: imgs})} 
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-nomad-gray mb-1">Hotel Name *</label>
+                      <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" required />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-nomad-gray mb-1">Location *</label>
+                      <input type="text" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" required />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-nomad-gray mb-1">Description *</label>
+                    <textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" rows={3} required />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-nomad-gray mb-1">Original Price ($) *</label>
+                      <input type="number" value={formData.originalPrice} onChange={(e) => setFormData({...formData, originalPrice: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" required min="0" />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-nomad-gray mb-1">Discounted Price ($) *</label>
+                      <input type="number" value={formData.discountedPrice} onChange={(e) => setFormData({...formData, discountedPrice: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" required min="0" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-nomad-gray mb-1">XP Reward</label>
+                      <input type="number" value={formData.xpReward} onChange={(e) => setFormData({...formData, xpReward: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" min="0" />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-nomad-gray mb-1">Amenities (comma separated)</label>
+                      <input type="text" value={formData.amenities} onChange={(e) => setFormData({...formData, amenities: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" placeholder="wifi, pool, gym" />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* QUEST FORM */}
+              {modalType === 'quest' && (
+                <>
+                  <div>
+                    <label className="block text-sm text-nomad-gray mb-1">Quest Title *</label>
+                    <input type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-nomad-gray mb-1">Description *</label>
+                    <textarea value={formData.questDescription} onChange={(e) => setFormData({...formData, questDescription: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" rows={3} required />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-nomad-gray mb-1">Type</label>
+                      <select value={formData.questType} onChange={(e) => setFormData({...formData, questType: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green">
+                        <option value="essential">Essential</option>
+                        <option value="daily">Daily</option>
+                        <option value="special">Special</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-nomad-gray mb-1">XP Reward</label>
+                      <input type="number" value={formData.questXp} onChange={(e) => setFormData({...formData, questXp: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" min="0" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-nomad-gray mb-1">Cost</label>
+                      <input type="number" value={formData.questCost} onChange={(e) => setFormData({...formData, questCost: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" min="0" />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-nomad-gray mb-1 flex items-center gap-2">
+                        <ExternalLink className="w-4 h-4" /> Quest Link
+                      </label>
+                      <input type="url" value={formData.questLink} onChange={(e) => setFormData({...formData, questLink: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" placeholder="https://example.com/quest" />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* EVENT FORM */}
+              {modalType === 'event' && (
+                <>
+                  <ImageUpload 
+                    images={formData.eventImages} 
+                    onImagesChange={(imgs) => setFormData({...formData, eventImages: imgs})} 
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-nomad-gray mb-1">Event Title *</label>
+                      <input type="text" value={formData.eventTitle} onChange={(e) => setFormData({...formData, eventTitle: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" required />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-nomad-gray mb-1">Location *</label>
+                      <input type="text" value={formData.eventLocation} onChange={(e) => setFormData({...formData, eventLocation: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" required />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-nomad-gray mb-1">Description *</label>
+                    <textarea value={formData.eventDescription} onChange={(e) => setFormData({...formData, eventDescription: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" rows={3} required />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-nomad-gray mb-1">Date *</label>
+                      <input type="date" value={formData.eventDate} onChange={(e) => setFormData({...formData, eventDate: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" required />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-nomad-gray mb-1">Price ($) *</label>
+                      <input type="number" value={formData.eventPrice} onChange={(e) => setFormData({...formData, eventPrice: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" required min="0" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-nomad-gray mb-1">Original Price ($)</label>
+                      <input type="number" value={formData.eventOriginalPrice} onChange={(e) => setFormData({...formData, eventOriginalPrice: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" min="0" />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-nomad-gray mb-1">Capacity *</label>
+                      <input type="number" value={formData.eventCapacity} onChange={(e) => setFormData({...formData, eventCapacity: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" required min="1" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-nomad-gray mb-1">XP Reward</label>
+                    <input type="number" value={formData.eventXp} onChange={(e) => setFormData({...formData, eventXp: e.target.value})} className="w-full px-3 py-2 bg-nomad-dark border border-nomad-border rounded-lg text-white focus:border-crypto-green" min="0" />
+                  </div>
+                </>
+              )}
+
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 bg-nomad-dark border border-nomad-border text-white rounded-lg hover:bg-white/5">
+                  Cancel
+                </button>
+                <button type="submit" disabled={loading} className="flex-1 px-4 py-2 bg-crypto-green text-nomad-dark rounded-lg font-medium hover:bg-crypto-green/90 disabled:opacity-50">
+                  {loading ? 'Saving...' : (editingItem ? 'Update' : 'Create')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
