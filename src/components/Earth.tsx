@@ -108,9 +108,9 @@ function Earth() {
 
 export default function EarthCanvas() {
   return (
-    <div className="w-full h-[300px] sm:h-[400px] md:h-[500px]">
+    <div className="w-full h-full">
       <Canvas
-        camera={{ position: [0, 0, 6], fov: 45 }}
+        camera={{ position: [0, 0, 5], fov: 50 }} // Camera adjusted
         style={{ background: 'transparent' }}
       >
         <ambientLight intensity={0.5} />
