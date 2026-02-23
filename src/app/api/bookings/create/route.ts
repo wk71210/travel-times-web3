@@ -2,20 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db/connect';
 import { Booking } from '@/lib/models/Booking';
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     await connectDB();
-    const { searchParams } = new URL(request.url);
-    const wallet = searchParams.get('wallet');
+    const body = await request.json();
 
-    if (!wallet) {
-      return NextResponse.json({ error: 'Wallet address required' }, { status: 400 });
-    }
+    const booking = new Booking({
+      id: 'bk_' + Date.now(),
+      ...body,
+      status: 'confirmed',
+      createdAt: new Date()
+    });
 
-    const bookings = await Booking.find({ userWallet: wallet }).sort({ createdAt: -1 });
-    return NextResponse.json({ success: true, bookings });
-  } catch (error) {
-    console.error('Bookings Error:', error);
-    return NextResponse.json({ error: 'Failed to fetch bookings' }, { status: 500 });
+    await booking.save();
+
+    return NextResponse.json({ 
+      success: true, 
+      booking,
+      message: 'Booking confirmed'
+    });
+  } catch (error: any) {
+    console.error('Booking Error:', error);
+    return NextResponse.json({ 
+      error: error.message || 'Failed to create booking' 
+    }, { status: 500 });
   }
 }
