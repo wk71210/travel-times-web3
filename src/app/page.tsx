@@ -7,13 +7,12 @@ import Link from 'next/link';
 import { ArrowRight, Sparkles, Zap, Menu, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
-import WalletConnect from '@/components/WalletConnect';
 
 // Dynamic import for Earth component
 const EarthCanvas = dynamic(() => import('@/components/Earth'), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-[300px] sm:h-[400px] md:h-[500px] flex items-center justify-center">
+    <div className="w-full h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] flex items-center justify-center">
       <div className="w-32 h-32 border-2 border-crypto-green/30 rounded-full animate-pulse"></div>
     </div>
   ),
@@ -27,13 +26,14 @@ export default function HomePage() {
 
   useEffect(() => {
     setMounted(true);
-    if (user?.wallet) {
-      if (isAdmin) {
-        router.push('/admin');
-      } else {
-        router.push('/profile');
-      }
-    }
+    // AUTO REDIRECT HATA DIYA - User can now see home page
+    // if (user?.wallet) {
+    //   if (isAdmin) {
+    //     router.push('/admin');
+    //   } else {
+    //     router.push('/profile');
+    //   }
+    // }
   }, [user, isAdmin, router]);
 
   const xpDisplay = user?.xp ? `${(user.xp / 1000).toFixed(1)}k` : '0';
@@ -41,88 +41,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-nomad-dark text-white overflow-x-hidden">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-nomad-dark/80 backdrop-blur-md border-b border-nomad-border">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-tt-red rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">TT</span>
-              </div>
-              <span className="font-bold text-xl tracking-tight hidden sm:block">
-                TRAVEL<span className="text-tt-red">TIMES</span>
-              </span>
-            </Link>
-
-            {/* Desktop Nav */}
-            <nav className="hidden md:flex items-center gap-8">
-              <Link href="/search" className="text-sm text-white/70 hover:text-white transition-colors uppercase tracking-wider">
-                Search
-              </Link>
-              <Link href="/my-trips" className="text-sm text-white/70 hover:text-white transition-colors uppercase tracking-wider">
-                My Trips
-              </Link>
-              <Link href="/events" className="text-sm text-white/70 hover:text-white transition-colors uppercase tracking-wider">
-                Events
-              </Link>
-            </nav>
-
-            {/* Right Side */}
-            <div className="flex items-center gap-3">
-              {mounted && user?.wallet && (
-                <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-nomad-card border border-white/10 rounded-lg">
-                  <span className="text-crypto-green text-sm font-medium">{boostDisplay}</span>
-                  <Zap className="w-3 h-3 text-crypto-green" />
-                  <span className="text-white text-sm font-medium">{xpDisplay} XP</span>
-                </div>
-              )}
-              
-              {mounted && isAdmin && (
-                <Link 
-                  href="/admin" 
-                  className="hidden md:block text-sm text-crypto-green hover:text-crypto-green/80 transition-colors px-3 py-1.5 border border-crypto-green rounded-lg"
-                >
-                  ADMIN
-                </Link>
-              )}
-              
-              {/* Wallet Connect Component */}
-              <WalletConnect />
-              
-              {/* Mobile Menu Button */}
-              <button 
-                className="md:hidden p-2 text-white"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              >
-                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <div className="md:hidden mt-4 pt-4 border-t border-nomad-border">
-              <nav className="flex flex-col gap-4">
-                <Link href="/search" className="text-sm text-white/70 hover:text-white py-2" onClick={() => setMobileMenuOpen(false)}>
-                  Search
-                </Link>
-                <Link href="/my-trips" className="text-sm text-white/70 hover:text-white py-2" onClick={() => setMobileMenuOpen(false)}>
-                  My Trips
-                </Link>
-                <Link href="/events" className="text-sm text-white/70 hover:text-white py-2" onClick={() => setMobileMenuOpen(false)}>
-                  Events
-                </Link>
-                {isAdmin && (
-                  <Link href="/admin" className="text-sm text-crypto-green py-2" onClick={() => setMobileMenuOpen(false)}>
-                    Admin
-                  </Link>
-                )}
-              </nav>
-            </div>
-          )}
-        </div>
-      </header>
+      {/* HEADER HATA DIYA - Ab layout se aa raha hai */}
       
       <main className="pt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-16 pb-16">
@@ -175,14 +94,16 @@ export default function HomePage() {
               </div>
             </motion.div>
 
-            {/* 3D Earth */}
+            {/* 3D Earth - SIZE BADHA DIYA */}
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1, delay: 0.6 }}
-              className="relative mb-6 md:mb-8"
+              className="relative mb-6 md:mb-8 w-full max-w-5xl mx-auto"
             >
-              <EarthCanvas />
+              <div className="w-full h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px]">
+                <EarthCanvas />
+              </div>
               
               {/* Floating Labels */}
               <div className="absolute top-1/4 left-1/4 hidden lg:block">
