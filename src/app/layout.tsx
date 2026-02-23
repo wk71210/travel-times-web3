@@ -64,7 +64,7 @@ function Header() {
             type="button"
           >
             <div className="w-8 h-8 bg-tt-red rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">TT</span>
+              <span className="text-white font-bold text-sm">WEB3</span>
             </div>
             <span className="font-bold text-xl tracking-tight">
               TRAVEL<span className="text-tt-red">TIMES</span>
