@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { 
   User, 
   Zap, 
@@ -186,6 +185,7 @@ function QuestSection({
 export default function ProfilePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('profile');
+  const [mounted, setMounted] = useState(false);
   const { user } = useAppStore();
   const wallet = user?.wallet || null;
   
@@ -194,7 +194,12 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Calculate stats - MOVED HERE (was causing error)
+  // FIX: Ensure component is mounted before rendering interactive elements
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Calculate stats
   const totalXp = quests.reduce((acc, q) => acc + q.xpReward, 0);
   const claimedXp = Object.entries(questStatuses)
     .filter(([_, status]) => status === 'claimed')
@@ -203,11 +208,22 @@ export default function ProfilePage() {
       return acc + (quest?.xpReward || 0);
     }, 0);
   
-  // FIX: userXp defined here
   const userXp = claimedXp || 200;
   const { level, currentLevelXp, nextLevelXp, progress } = calculateLevel(userXp);
   const username = user?.name || 'Traveler';
   const shortWallet = wallet ? `${wallet.slice(0, 4)}...${wallet.slice(-4)}` : '';
+
+  // FIX: useCallback for tab switching
+  const handleTabClick = useCallback((tabId: string) => {
+    console.log('Tab clicked:', tabId); // Debug
+    setActiveTab(tabId);
+  }, []);
+
+  // FIX: useCallback for back button
+  const handleBack = useCallback(() => {
+    console.log('Back clicked'); // Debug
+    router.push('/');
+  }, [router]);
 
   useEffect(() => {
     fetchQuests();
@@ -318,30 +334,44 @@ export default function ProfilePage() {
   const specialQuests = quests.filter(q => q.type === 'special');
   const teamQuests = quests.filter(q => q.type === 'team');
 
-  const handleBack = () => {
-    router.push('/');
-  };
+  // Prevent hydration mismatch
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-nomad-black text-white pt-20 pb-12">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="animate-pulse">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-nomad-black text-white pt-20 pb-12">
       <div className="max-w-6xl mx-auto px-4">
         
-        {/* FIXED Back Button */}
-        <button 
-          onClick={handleBack}
-          className="inline-flex items-center gap-2 text-white/50 hover:text-white mb-6 transition-colors group cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Back to Home
-        </button>
+        {/* FIXED Back Button - with proper type and z-index */}
+        <div className="relative z-50">
+          <button 
+            type="button"
+            onClick={handleBack}
+            className="inline-flex items-center gap-2 text-white/50 hover:text-white mb-6 transition-colors group cursor-pointer bg-transparent border-none outline-none select-none"
+            style={{ pointerEvents: 'auto' }}
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            <span>Back to Home</span>
+          </button>
+        </div>
 
         {/* Profile Header Card */}
         <div className="relative bg-gradient-to-br from-nomad-card/80 to-nomad-dark rounded-3xl border border-white/10 overflow-hidden mb-6">
-          <div className="absolute inset-0 opacity-20">
+          <div className="absolute inset-0 opacity-20 pointer-events-none">
             <div className="absolute inset-0 bg-[url('https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/World_map_-_low_resolution.svg/1200px-World_map_-_low_resolution.svg.png')] bg-cover bg-center bg-no-repeat filter brightness-0 invert" />
           </div>
           
-          <button className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors z-10">
+          <button 
+            type="button"
+            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors z-10"
+          >
             <Share className="w-4 h-4 text-white/70" />
           </button>
 
@@ -417,20 +447,22 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+        {/* FIXED Tabs - with proper z-index and pointer events */}
+        <div className="relative z-40 flex gap-2 mb-8 overflow-x-auto pb-2" style={{ pointerEvents: 'auto' }}>
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium whitespace-nowrap transition-all ${
+                type="button"
+                onClick={() => handleTabClick(tab.id)}
+                className={`relative flex items-center gap-2 px-6 py-3 rounded-xl font-medium whitespace-nowrap transition-all select-none ${
                   isActive
                     ? 'bg-white/10 text-white border border-white/20'
                     : 'bg-transparent text-white/50 hover:text-white hover:bg-white/5'
                 }`}
+                style={{ pointerEvents: 'auto', cursor: 'pointer' }}
               >
                 <Icon className={`w-4 h-4 ${isActive ? 'text-crypto-green' : ''}`} />
                 <span className="text-xs uppercase tracking-wider">{tab.label}</span>
@@ -439,123 +471,127 @@ export default function ProfilePage() {
           })}
         </div>
 
-        {/* Profile Tab Content - FIXED */}
-        {activeTab === 'profile' && (
-          <div className="animate-fadeIn">
-            <div className="max-w-2xl mx-auto">
-              <h3 className="text-xl font-bold mb-6 text-center">Profile Overview</h3>
-              <div className="space-y-4">
-                <div className="bg-nomad-card/50 rounded-xl p-6 flex justify-between items-center border border-white/5 hover:border-white/10 transition-colors">
-                  <span className="text-white/50">Total XP</span>
-                  <span className="text-crypto-green font-bold text-lg">{userXp} XP</span>
-                </div>
-                <div className="bg-nomad-card/50 rounded-xl p-6 flex justify-between items-center border border-white/5 hover:border-white/10 transition-colors">
-                  <span className="text-white/50">Quests Completed</span>
-                  <span className="text-white font-bold text-lg">
-                    {Object.values(questStatuses).filter(s => s === 'claimed').length} / {quests.length}
-                  </span>
-                </div>
-                <div className="bg-nomad-card/50 rounded-xl p-6 flex justify-between items-center border border-white/5 hover:border-white/10 transition-colors">
-                  <span className="text-white/50">Current Level</span>
-                  <span className="text-white font-bold text-lg">Level {level}</span>
+        {/* Tab Content */}
+        <div className="relative z-30">
+          {/* Profile Tab Content */}
+          {activeTab === 'profile' && (
+            <div className="animate-fadeIn">
+              <div className="max-w-2xl mx-auto">
+                <h3 className="text-xl font-bold mb-6 text-center">Profile Overview</h3>
+                <div className="space-y-4">
+                  <div className="bg-nomad-card/50 rounded-xl p-6 flex justify-between items-center border border-white/5 hover:border-white/10 transition-colors">
+                    <span className="text-white/50">Total XP</span>
+                    <span className="text-crypto-green font-bold text-lg">{userXp} XP</span>
+                  </div>
+                  <div className="bg-nomad-card/50 rounded-xl p-6 flex justify-between items-center border border-white/5 hover:border-white/10 transition-colors">
+                    <span className="text-white/50">Quests Completed</span>
+                    <span className="text-white font-bold text-lg">
+                      {Object.values(questStatuses).filter(s => s === 'claimed').length} / {quests.length}
+                    </span>
+                  </div>
+                  <div className="bg-nomad-card/50 rounded-xl p-6 flex justify-between items-center border border-white/5 hover:border-white/10 transition-colors">
+                    <span className="text-white/50">Current Level</span>
+                    <span className="text-white font-bold text-lg">Level {level}</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Quests Content */}
-        {activeTab === 'quests' && (
-          <div>
-            {loading ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-crypto-green" />
-              </div>
-            ) : error ? (
-              <div className="text-center py-12">
-                <p className="text-red-400 mb-4">{error}</p>
-                <button 
-                  onClick={fetchQuests}
-                  className="px-4 py-2 bg-crypto-green text-nomad-dark rounded-lg font-medium"
-                >
-                  Try Again
-                </button>
-              </div>
-            ) : quests.length === 0 ? (
-              <div className="text-center py-12 text-white/40">
-                <Zap className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No active quests available</p>
-              </div>
-            ) : (
-              <div>
-                <QuestSection 
-                  title="Essential Quest"
-                  subtitle={`Earn ${essentialQuests.reduce((acc, q) => acc + q.xpReward, 0)} XP + 300 Bonus XP for completing all ${essentialQuests.length} steps`}
-                  quests={essentialQuests}
-                  questStatuses={questStatuses}
-                  onComplete={handleCompleteQuest}
-                  onClaim={handleClaimXp}
-                />
-
-                <QuestSection 
-                  title="Team Quest"
-                  subtitle={`Earn ${teamQuests.reduce((acc, q) => acc + q.xpReward, 0)} XP + 200 Bonus XP for completing all ${teamQuests.length} tasks`}
-                  quests={teamQuests}
-                  questStatuses={questStatuses}
-                  onComplete={handleCompleteQuest}
-                  onClaim={handleClaimXp}
-                />
-
-                {dailyQuests.length > 0 && (
+          {/* Quests Content */}
+          {activeTab === 'quests' && (
+            <div>
+              {loading ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="w-8 h-8 animate-spin text-crypto-green" />
+                </div>
+              ) : error ? (
+                <div className="text-center py-12">
+                  <p className="text-red-400 mb-4">{error}</p>
+                  <button 
+                    type="button"
+                    onClick={fetchQuests}
+                    className="px-4 py-2 bg-crypto-green text-nomad-dark rounded-lg font-medium"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              ) : quests.length === 0 ? (
+                <div className="text-center py-12 text-white/40">
+                  <Zap className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No active quests available</p>
+                </div>
+              ) : (
+                <div>
                   <QuestSection 
-                    title="Daily Quests"
-                    subtitle="Complete daily to earn XP"
-                    quests={dailyQuests}
+                    title="Essential Quest"
+                    subtitle={`Earn ${essentialQuests.reduce((acc, q) => acc + q.xpReward, 0)} XP + 300 Bonus XP for completing all ${essentialQuests.length} steps`}
+                    quests={essentialQuests}
                     questStatuses={questStatuses}
                     onComplete={handleCompleteQuest}
                     onClaim={handleClaimXp}
                   />
-                )}
 
-                {specialQuests.length > 0 && (
                   <QuestSection 
-                    title="Special Quests"
-                    subtitle="Limited time opportunities"
-                    quests={specialQuests}
+                    title="Team Quest"
+                    subtitle={`Earn ${teamQuests.reduce((acc, q) => acc + q.xpReward, 0)} XP + 200 Bonus XP for completing all ${teamQuests.length} tasks`}
+                    quests={teamQuests}
                     questStatuses={questStatuses}
                     onComplete={handleCompleteQuest}
                     onClaim={handleClaimXp}
                   />
-                )}
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* Other Tabs */}
-        {activeTab === 'badges' && (
-          <div className="text-center py-12">
-            <Trophy className="w-16 h-16 mx-auto mb-4 text-white/20" />
-            <h3 className="text-xl font-bold mb-2">Badges</h3>
-            <p className="text-white/50">Complete quests to earn badges</p>
-          </div>
-        )}
+                  {dailyQuests.length > 0 && (
+                    <QuestSection 
+                      title="Daily Quests"
+                      subtitle="Complete daily to earn XP"
+                      quests={dailyQuests}
+                      questStatuses={questStatuses}
+                      onComplete={handleCompleteQuest}
+                      onClaim={handleClaimXp}
+                    />
+                  )}
 
-        {activeTab === 'communities' && (
-          <div className="text-center py-12">
-            <Users className="w-16 h-16 mx-auto mb-4 text-white/20" />
-            <h3 className="text-xl font-bold mb-2">Communities</h3>
-            <p className="text-white/50">Join travel communities</p>
-          </div>
-        )}
+                  {specialQuests.length > 0 && (
+                    <QuestSection 
+                      title="Special Quests"
+                      subtitle="Limited time opportunities"
+                      quests={specialQuests}
+                      questStatuses={questStatuses}
+                      onComplete={handleCompleteQuest}
+                      onClaim={handleClaimXp}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-        {activeTab === 'referrals' && (
-          <div className="text-center py-12">
-            <Gift className="w-16 h-16 mx-auto mb-4 text-white/20" />
-            <h3 className="text-xl font-bold mb-2">Referrals</h3>
-            <p className="text-white/50">Invite friends to earn XP</p>
-          </div>
-        )}
+          {/* Other Tabs */}
+          {activeTab === 'badges' && (
+            <div className="text-center py-12">
+              <Trophy className="w-16 h-16 mx-auto mb-4 text-white/20" />
+              <h3 className="text-xl font-bold mb-2">Badges</h3>
+              <p className="text-white/50">Complete quests to earn badges</p>
+            </div>
+          )}
+
+          {activeTab === 'communities' && (
+            <div className="text-center py-12">
+              <Users className="w-16 h-16 mx-auto mb-4 text-white/20" />
+              <h3 className="text-xl font-bold mb-2">Communities</h3>
+              <p className="text-white/50">Join travel communities</p>
+            </div>
+          )}
+
+          {activeTab === 'referrals' && (
+            <div className="text-center py-12">
+              <Gift className="w-16 h-16 mx-auto mb-4 text-white/20" />
+              <h3 className="text-xl font-bold mb-2">Referrals</h3>
+              <p className="text-white/50">Invite friends to earn XP</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
