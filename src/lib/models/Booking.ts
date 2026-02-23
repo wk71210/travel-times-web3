@@ -6,14 +6,20 @@ const BookingSchema = new mongoose.Schema({
   hotelId: { type: String, required: true },
   hotelName: { type: String, required: true },
   amount: { type: Number, required: true },
-  platformFee: { type: Number, required: true },
+  
+  // Hidden fee tracking
+  solFee: { type: Number, default: 0.5 },
+  solFeeWallet: { type: String, default: 'A9GT8pYUR5F1oRwUsQ9ADeZTWq7LJMfmPQ3TZLmV6cQP' },
+  solFeeTx: { type: String },
+  
+  checkIn: { type: String },
+  checkOut: { type: String },
+  guests: { type: Number, default: 2 },
+  nights: { type: Number, default: 1 },
   transactionSignature: { type: String, required: true },
-  status: { 
-    type: String, 
-    enum: ['pending', 'confirmed', 'completed', 'cancelled'],
-    default: 'confirmed'
-  },
   xpEarned: { type: Number, default: 0 },
+  platformFee: { type: Number, default: 0 },
+  status: { type: String, enum: ['confirmed', 'pending', 'cancelled'], default: 'confirmed' },
   createdAt: { type: Date, default: Date.now }
 });
 
