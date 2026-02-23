@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { 
@@ -9,23 +9,88 @@ import {
   calculateHiddenFee 
 } from '@/lib/solana/usdc';
 import { useAppStore } from '@/lib/stores/appStore';
-import { hotels } from '@/lib/data/hotels';
 import { Search, MapPin, Star, Heart, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+
+interface Hotel {
+  _id?: string;
+  id: string;
+  name: string;
+  location: string;
+  description?: string;
+  originalPrice: number;
+  discountedPrice: number;
+  discount?: number;
+  rating?: number;
+  amenities: string[];
+  images: string[];
+  isActive?: boolean;
+}
 
 export default function BookingsPage() {
   const router = useRouter();
   const { user } = useAppStore();
-  const [selectedHotel, setSelectedHotel] = useState<any>(null);
+  const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // FIX: Add state for hotels from API
+  const [hotels, setHotels] = useState<Hotel[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // FIX: Fetch hotels from API
+  useEffect(() => {
+    fetchHotels();
+  }, []);
+
+  const fetchHotels = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const res = await fetch('/api/hotels');
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
+      const data = await res.json();
+      console.log('Hotels API Response:', data); // Debug log
+      
+      let hotelsData: Hotel[] = [];
+      
+      // Handle different response formats
+      if (Array.isArray(data)) {
+        hotelsData = data;
+      } else if (data.success && Array.isArray(data.hotels)) {
+        hotelsData = data.hotels;
+      } else if (data.hotels && Array.isArray(data.hotels)) {
+        hotelsData = data.hotels;
+      } else if (data.data && Array.isArray(data.data)) {
+        hotelsData = data.data;
+      }
+      
+      // Filter only active hotels
+      hotelsData = hotelsData.filter(h => h.isActive !== false);
+      
+      console.log('Processed hotels:', hotelsData); // Debug log
+      setHotels(hotelsData);
+      
+    } catch (error: any) {
+      console.error('Failed to fetch hotels:', error);
+      setError(error?.message || 'Failed to load hotels');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredHotels = hotels.filter(h => 
-    h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    h.location.toLowerCase().includes(searchQuery.toLowerCase())
+    h.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    h.location?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleBooking = async (hotel: any) => {
+  const handleBooking = async (hotel: Hotel) => {
     if (!user?.wallet) {
       alert('Please connect your Phantom wallet first');
       return;
@@ -99,75 +164,110 @@ export default function BookingsPage() {
       {/* Results */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         <h2 className="text-xl font-bold mb-6">
-          {filteredHotels.length} stays available
+          {loading ? 'Loading...' : `${filteredHotels.length} stays available`}
         </h2>
         
-        <div className="space-y-4">
-          {filteredHotels.map((hotel) => (
-            <div 
-              key={hotel.id} 
-              className="flex flex-col md:flex-row gap-4 p-4 bg-nomad-card rounded-xl border border-nomad-border hover:border-crypto-green/50 transition-colors"
+        {/* FIX: Loading state */}
+        {loading && (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-crypto-green" />
+            <span className="ml-2 text-nomad-gray">Loading hotels...</span>
+          </div>
+        )}
+
+        {/* FIX: Error state */}
+        {!loading && error && (
+          <div className="text-center py-12">
+            <p className="text-red-400 mb-4">{error}</p>
+            <button 
+              onClick={fetchHotels}
+              className="px-4 py-2 bg-crypto-green text-nomad-dark rounded-lg font-medium"
             >
-              {/* Image */}
-              <div className="relative w-full md:w-48 h-48 md:h-32 flex-shrink-0">
-                <img 
-                  src={hotel.images[0]} 
-                  alt={hotel.name}
-                  className="w-full h-full object-cover rounded-lg"
-                />
-                <div className="absolute top-2 left-2 px-2 py-1 bg-crypto-green text-nomad-dark text-xs font-bold rounded">
-                  -{hotel.discount}%
+              Try Again
+            </button>
+          </div>
+        )}
+
+        {/* FIX: Empty state */}
+        {!loading && !error && hotels.length === 0 && (
+          <div className="text-center py-12 text-nomad-gray">
+            <p>No hotels available at the moment.</p>
+            <p className="text-sm mt-2">Check back later for new listings!</p>
+          </div>
+        )}
+
+        {/* FIX: Hotels list */}
+        {!loading && !error && (
+          <div className="space-y-4">
+            {filteredHotels.map((hotel) => (
+              <div 
+                key={hotel.id || hotel._id} 
+                className="flex flex-col md:flex-row gap-4 p-4 bg-nomad-card rounded-xl border border-nomad-border hover:border-crypto-green/50 transition-colors"
+              >
+                {/* Image */}
+                <div className="relative w-full md:w-48 h-48 md:h-32 flex-shrink-0">
+                  <img 
+                    src={hotel.images?.[0] || '/placeholder-hotel.jpg'} 
+                    alt={hotel.name}
+                    className="w-full h-full object-cover rounded-lg"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/placeholder-hotel.jpg';
+                    }}
+                  />
+                  <div className="absolute top-2 left-2 px-2 py-1 bg-crypto-green text-nomad-dark text-xs font-bold rounded">
+                    -{hotel.discount || Math.round(((hotel.originalPrice - hotel.discountedPrice) / hotel.originalPrice) * 100)}%
+                  </div>
                 </div>
-              </div>
-              
-              {/* Content */}
-              <div className="flex-1 flex flex-col">
-                <div className="flex items-center gap-1 mb-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Star 
-                      key={i} 
-                      className={`w-4 h-4 ${i < Math.floor(hotel.rating) ? 'text-crypto-green fill-current' : 'text-nomad-gray'}`}
-                    />
-                  ))}
-                  <span className="text-sm text-nomad-gray ml-1">{hotel.rating}</span>
-                </div>
                 
-                <h3 className="font-bold text-lg">{hotel.name}</h3>
-                <p className="text-nomad-gray text-sm flex items-center gap-1">
-                  <MapPin className="w-3 h-3" /> {hotel.location}
-                </p>
-                
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {hotel.amenities.slice(0, 3).map((a: string) => (
-                    <span key={a} className="px-2 py-1 bg-nomad-dark rounded text-xs text-nomad-gray capitalize">
-                      {a}
-                    </span>
-                  ))}
-                </div>
-                
-                <div className="flex-1" />
-                
-                <div className="flex items-end justify-between mt-4">
-                  <div className="text-right md:text-left">
-                    <div className="flex items-center gap-2 justify-end md:justify-start">
-                      <span className="text-nomad-gray line-through text-sm">${hotel.originalPrice}</span>
-                      <span className="text-2xl font-bold text-crypto-green">${hotel.discountedPrice}</span>
-                    </div>
-                    <p className="text-xs text-nomad-gray">per night</p>
+                {/* Content */}
+                <div className="flex-1 flex flex-col">
+                  <div className="flex items-center gap-1 mb-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star 
+                        key={i} 
+                        className={`w-4 h-4 ${i < Math.floor(hotel.rating || 4) ? 'text-crypto-green fill-current' : 'text-nomad-gray'}`}
+                      />
+                    ))}
+                    <span className="text-sm text-nomad-gray ml-1">{hotel.rating || 4.5}</span>
                   </div>
                   
-                  <button 
-                    onClick={() => setSelectedHotel(hotel)}
-                    disabled={isProcessing}
-                    className="px-6 py-2 bg-crypto-green text-nomad-dark rounded-lg font-medium hover:bg-crypto-green/90 transition-colors disabled:opacity-50"
-                  >
-                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Book Now'}
-                  </button>
+                  <h3 className="font-bold text-lg">{hotel.name}</h3>
+                  <p className="text-nomad-gray text-sm flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> {hotel.location}
+                  </p>
+                  
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {hotel.amenities?.slice(0, 3).map((a: string) => (
+                      <span key={a} className="px-2 py-1 bg-nomad-dark rounded text-xs text-nomad-gray capitalize">
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                  
+                  <div className="flex-1" />
+                  
+                  <div className="flex items-end justify-between mt-4">
+                    <div className="text-right md:text-left">
+                      <div className="flex items-center gap-2 justify-end md:justify-start">
+                        <span className="text-nomad-gray line-through text-sm">${hotel.originalPrice}</span>
+                        <span className="text-2xl font-bold text-crypto-green">${hotel.discountedPrice}</span>
+                      </div>
+                      <p className="text-xs text-nomad-gray">per night</p>
+                    </div>
+                    
+                    <button 
+                      onClick={() => setSelectedHotel(hotel)}
+                      disabled={isProcessing}
+                      className="px-6 py-2 bg-crypto-green text-nomad-dark rounded-lg font-medium hover:bg-crypto-green/90 transition-colors disabled:opacity-50"
+                    >
+                      {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Book Now'}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Booking Modal */}
