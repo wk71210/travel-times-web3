@@ -1,13 +1,11 @@
 'use client';
 
-import type { Metadata } from 'next';
 import { Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import WalletConnect from '@/components/WalletConnect';
 import { useAppStore } from '@/lib/stores/appStore';
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const spaceGrotesk = Space_Grotesk({ 
@@ -15,13 +13,8 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-space-grotesk' 
 });
 
-// Metadata ko alag file mein daalo ya hata do (client component mein metadata nahi chalta)
-// export const metadata: Metadata = {
-//   title: 'Travel Times - Book with Crypto',
-//   description: 'Book hotels with USDC on Solana',
-// };
-
 function Header() {
+  const router = useRouter();
   const { user, isAdmin } = useAppStore();
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
@@ -30,7 +23,6 @@ function Header() {
     setMounted(true);
   }, []);
 
-  // Prevent hydration mismatch
   if (!mounted) {
     return (
       <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-nomad-border">
@@ -44,26 +36,32 @@ function Header() {
                 TRAVEL<span className="text-tt-red">TIMES</span>
               </span>
             </div>
-            <div className="px-4 py-2">Loading...</div>
           </div>
         </div>
       </header>
     );
   }
 
-  // Check if link is active
   const isActive = (path: string) => pathname === path;
+
+  const handleLogoClick = () => {
+    router.push('/');
+  };
+
+  const handleNavClick = (path: string) => {
+    router.push(path);
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-nomad-border">
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           
-          {/* Logo - FIXED: Click pe Home jaayega */}
-          <Link 
-            href="/" 
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
-            prefetch={true}
+          {/* LOGO - FIXED */}
+          <button 
+            onClick={handleLogoClick}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer bg-transparent border-none outline-none"
+            type="button"
           >
             <div className="w-8 h-8 bg-tt-red rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">TT</span>
@@ -71,59 +69,58 @@ function Header() {
             <span className="font-bold text-xl tracking-tight">
               TRAVEL<span className="text-tt-red">TIMES</span>
             </span>
-          </Link>
+          </button>
 
-          {/* Nav - Center me - FIXED: All links working */}
+          {/* Nav Links - FIXED */}
           <nav className="hidden md:flex items-center gap-6">
-            <Link 
-              href="/search" 
-              className={`text-sm transition-colors ${
+            <button 
+              onClick={() => handleNavClick('/search')}
+              className={`text-sm transition-colors bg-transparent border-none outline-none cursor-pointer ${
                 isActive('/search') ? 'text-white' : 'text-nomad-gray hover:text-white'
               }`}
-              prefetch={true}
+              type="button"
             >
               SEARCH
-            </Link>
-            <Link 
-              href="/my-trips" 
-              className={`text-sm transition-colors ${
+            </button>
+            <button 
+              onClick={() => handleNavClick('/my-trips')}
+              className={`text-sm transition-colors bg-transparent border-none outline-none cursor-pointer ${
                 isActive('/my-trips') ? 'text-white' : 'text-nomad-gray hover:text-white'
               }`}
-              prefetch={true}
+              type="button"
             >
               MY TRIPS
-            </Link>
-            <Link 
-              href="/events" 
-              className={`text-sm transition-colors ${
+            </button>
+            <button 
+              onClick={() => handleNavClick('/events')}
+              className={`text-sm transition-colors bg-transparent border-none outline-none cursor-pointer ${
                 isActive('/events') ? 'text-white' : 'text-nomad-gray hover:text-white'
               }`}
-              prefetch={true}
+              type="button"
             >
               EVENTS
-            </Link>
-            <Link 
-              href="/profile" 
-              className={`text-sm transition-colors ${
+            </button>
+            <button 
+              onClick={() => handleNavClick('/profile')}
+              className={`text-sm transition-colors bg-transparent border-none outline-none cursor-pointer ${
                 isActive('/profile') ? 'text-white' : 'text-nomad-gray hover:text-white'
               }`}
-              prefetch={true}
+              type="button"
             >
               PROFILE
-            </Link>
+            </button>
           </nav>
 
-          {/* Right Side - Wallet Connect + Admin */}
+          {/* Right Side */}
           <div className="flex items-center gap-4">
-            {/* Admin link - sirf admin ko dikhayega */}
             {isAdmin && (
-              <Link 
-                href="/admin" 
-                className="text-sm text-crypto-green hover:text-crypto-green/80 transition-colors px-3 py-1 border border-crypto-green rounded-lg"
-                prefetch={true}
+              <button 
+                onClick={() => handleNavClick('/admin')}
+                className="text-sm text-crypto-green hover:text-crypto-green/80 transition-colors px-3 py-1 border border-crypto-green rounded-lg bg-transparent cursor-pointer"
+                type="button"
               >
                 ADMIN
-              </Link>
+              </button>
             )}
             <WalletConnect />
           </div>
