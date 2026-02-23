@@ -9,7 +9,6 @@ function Earth() {
   const meshRef = useRef<THREE.Mesh>(null);
   const atmosphereRef = useRef<THREE.Mesh>(null);
 
-  // Create dots for the globe
   const dots = useMemo(() => {
     const points = [];
     const count = 2000;
@@ -39,7 +38,6 @@ function Earth() {
 
   return (
     <group>
-      {/* Atmosphere Glow */}
       <mesh ref={atmosphereRef}>
         <sphereGeometry args={[2.2, 64, 64]} />
         <meshBasicMaterial
@@ -50,7 +48,6 @@ function Earth() {
         />
       </mesh>
 
-      {/* Main Globe with Dots */}
       <mesh ref={meshRef}>
         <sphereGeometry args={[2, 64, 64]} />
         <meshBasicMaterial
@@ -60,7 +57,6 @@ function Earth() {
         />
       </mesh>
 
-      {/* Dots on Globe */}
       <points>
         <bufferGeometry>
           <bufferAttribute
@@ -79,13 +75,11 @@ function Earth() {
         />
       </points>
 
-      {/* Connection Lines */}
       <lineSegments>
         <wireframeGeometry args={[new THREE.IcosahedronGeometry(2.05, 2)]} />
         <lineBasicMaterial color="#00D4AA" transparent opacity={0.1} />
       </lineSegments>
 
-      {/* Floating Markers */}
       {[...Array(5)].map((_, i) => {
         const lat = (Math.random() - 0.5) * Math.PI;
         const lon = Math.random() * Math.PI * 2;
@@ -114,7 +108,7 @@ function Earth() {
 
 export default function EarthCanvas() {
   return (
-    <div className="w-full h-[400px] md:h-[500px] lg:h-[600px]">
+    <div className="w-full h-[300px] sm:h-[400px] md:h-[500px]">
       <Canvas
         camera={{ position: [0, 0, 6], fov: 45 }}
         style={{ background: 'transparent' }}
