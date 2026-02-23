@@ -28,7 +28,8 @@
     "tailwind-merge": "^2.2.0",
     "date-fns": "^3.0.6",
     "react-hot-toast": "^2.4.1",
-    "@headlessui/react": "^1.7.17"
+    "@headlessui/react": "^1.7.17",
+    "mongoose": "^8.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.5",
@@ -38,7 +39,6 @@
     "typescript": "^5.3.3",
     "tailwindcss": "^3.4.0",
     "postcss": "^8.4.32",
-    "mongoose": "^8.0.0",
     "autoprefixer": "^10.4.16"
   }
 }
