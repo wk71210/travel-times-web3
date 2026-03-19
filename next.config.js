@@ -8,7 +8,14 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
+    domains: [
+      'crossmint.com',
+      'www.crossmint.com',
+      'placehold.co',
+      'ipfs.io',
+      'arweave.net',
+    ],
   },
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
