@@ -40,7 +40,7 @@ const DEFAULT_NFT_DATA = {
 export default function CrossmintMintButton({ 
   metadata = DEFAULT_NFT_DATA, 
   price = 5,
-  recipientWallet = 'A9GT8pYUR5F1oRwUsQ9ADeZTWq7LJMfmPQ3TZLmV6cQP' // ✅ Your wallet
+  recipientWallet = 'A9GT8pYUR5F1oRwUsQ9ADeZTWq7LJMfmPQ3TZLmV6cQP'
 }: Props) {
   const { publicKey, connected, signTransaction } = useWallet();
   const { connection } = useConnection();
@@ -54,13 +54,13 @@ export default function CrossmintMintButton({
     }
 
     setLoading(true);
-    setStatus('Checking USDC balance...');
+    setStatus('Checking balance...');
 
     try {
       const usdcMint = new PublicKey(USDC_MINT_ADDRESS);
       const recipient = new PublicKey(recipientWallet);
       
-      // Get user's USDC token account
+      // Get token accounts
       const userUsdcAccount = getAssociatedTokenAddressSync(
         usdcMint,
         publicKey,
@@ -69,7 +69,6 @@ export default function CrossmintMintButton({
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
       
-      // Get recipient's USDC token account
       const recipientUsdcAccount = getAssociatedTokenAddressSync(
         usdcMint,
         recipient,
@@ -78,29 +77,34 @@ export default function CrossmintMintButton({
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
 
-      // Check user USDC account and balance
+      // Check user USDC account
       const userAccountInfo = await connection.getAccountInfo(userUsdcAccount);
       
       if (!userAccountInfo) {
-        throw new Error('You need USDC in your wallet first. Please deposit USDC to your wallet.');
+        throw new Error('You need USDC in your wallet first.');
       }
 
       // Check balance
       const tokenAccountBalance = await connection.getTokenAccountBalance(userUsdcAccount);
       const balance = Number(tokenAccountBalance.value.amount);
-      const requiredAmount = price * 1000000; // USDC has 6 decimals
+      const requiredAmount = price * 1000000;
       
       if (balance < requiredAmount) {
-        throw new Error(`Insufficient USDC balance. You have ${balance / 1000000} USDC, need ${price} USDC`);
+        throw new Error(`Insufficient USDC. You have ${balance / 1000000}, need ${price}`);
       }
 
       setStatus('Preparing transaction...');
-      const transaction = new Transaction();
 
-      // Check if recipient has USDC account, if not create it
+      // ✅ FIX: Get fresh blockhash right before creating transaction
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+      
+      const transaction = new Transaction();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = publicKey;
+
+      // Check recipient account
       const recipientAccountInfo = await connection.getAccountInfo(recipientUsdcAccount);
       if (!recipientAccountInfo) {
-        setStatus('Creating recipient account...');
         transaction.add(
           createAssociatedTokenAccountInstruction(
             publicKey,
@@ -111,8 +115,7 @@ export default function CrossmintMintButton({
         );
       }
 
-      // Add USDC transfer instruction
-      setStatus('Transferring USDC...');
+      // Add transfer
       transaction.add(
         createTransferInstruction(
           userUsdcAccount,
@@ -122,22 +125,33 @@ export default function CrossmintMintButton({
         )
       );
 
-      // Send transaction
-      transaction.feePayer = publicKey;
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
+      setStatus('Please approve transaction...');
       
+      // Sign and send
       const signed = await signTransaction(transaction);
-      const signature = await connection.sendRawTransaction(signed.serialize());
       
-      await connection.confirmTransaction({
+      setStatus('Sending transaction...');
+      const signature = await connection.sendRawTransaction(signed.serialize(), {
+        skipPreflight: false,
+        preflightCommitment: 'confirmed',
+        maxRetries: 3
+      });
+      
+      setStatus('Confirming...');
+      
+      // ✅ FIX: Better confirmation with timeout
+      const confirmation = await connection.confirmTransaction({
         signature,
         blockhash,
         lastValidBlockHeight
       }, 'confirmed');
+
+      if (confirmation.value.err) {
+        throw new Error('Transaction failed on chain');
+      }
       
-      console.log('Payment successful:', signature);
-      setStatus('Payment received! Minting NFT...');
+      console.log('Payment success:', signature);
+      setStatus('Payment done! Minting NFT...');
 
       // Call Crossmint API
       const mintRes = await fetch('/api/mint', {
@@ -152,12 +166,12 @@ export default function CrossmintMintButton({
       const mintData = await mintRes.json();
 
       if (!mintData.success) {
-        throw new Error(mintData.error || 'Mint API call failed');
+        throw new Error(mintData.error || 'Mint failed');
       }
 
-      setStatus(`NFT Minting... ID: ${mintData.actionId.slice(0, 8)}`);
+      setStatus(`Minting... ID: ${mintData.actionId.slice(0, 8)}`);
 
-      // Poll for status
+      // Poll status
       const interval = setInterval(async () => {
         try {
           const check = await fetch(`/api/mint/status?actionId=${mintData.actionId}`);
@@ -165,11 +179,11 @@ export default function CrossmintMintButton({
           
           if (statusData.status === 'succeeded') {
             clearInterval(interval);
-            setStatus('✅ NFT Delivered to your wallet!');
+            setStatus('✅ NFT Delivered!');
             setLoading(false);
           } else if (statusData.status === 'failed') {
             clearInterval(interval);
-            setStatus('❌ Mint failed. Contact support.');
+            setStatus('❌ Mint failed');
             setLoading(false);
           }
         } catch (e) {
@@ -177,17 +191,16 @@ export default function CrossmintMintButton({
         }
       }, 3000);
 
-      // Stop after 2 minutes
       setTimeout(() => {
         clearInterval(interval);
         if (loading) {
           setLoading(false);
-          setStatus('⏱️ Timeout - Check wallet later');
+          setStatus('⏱️ Check wallet later');
         }
       }, 120000);
 
     } catch (err: any) {
-      console.error('Mint error:', err);
+      console.error('Error:', err);
       setStatus(`❌ ${err.message}`);
       setLoading(false);
     }
