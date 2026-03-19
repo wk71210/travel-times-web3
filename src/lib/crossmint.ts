@@ -17,6 +17,9 @@ export interface NFTMetadata {
 
 // Single Transaction Mint Function
 export async function mintNFT(walletAddress: string, metadata: NFTMetadata) {
+  console.log('Minting NFT for:', walletAddress);
+  console.log('Image URL:', metadata.image);
+
   const response = await fetch(
     `${BASE_URL}/collections/${COLLECTION_ID}/nfts`,
     {
@@ -40,7 +43,8 @@ export async function mintNFT(walletAddress: string, metadata: NFTMetadata) {
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.message || 'Mint failed');
+    console.error('Crossmint API Error:', error);
+    throw new Error(error.message || error.error || 'Mint failed');
   }
 
   return response.json(); // { id: "cm_..." }
