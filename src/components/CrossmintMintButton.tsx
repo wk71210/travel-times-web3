@@ -4,7 +4,13 @@ import { useState } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { PublicKey, Transaction } from '@solana/web3.js';
-import { getAssociatedTokenAddress, createTransferInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { 
+  getAssociatedTokenAddress, 
+  createAssociatedTokenAccountInstruction,
+  createTransferInstruction, 
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID
+} from '@solana/spl-token';
 
 interface Props {
   metadata: {
@@ -36,33 +42,78 @@ export default function CrossmintMintButton({
     }
 
     setLoading(true);
-    setStatus('Processing payment...');
+    setStatus('Preparing transaction...');
 
     try {
-      // Collect USDC
       const usdcMint = new PublicKey(USDC_MINT_ADDRESS);
       const recipient = new PublicKey(recipientWallet);
       
-      const userUsdcAccount = await getAssociatedTokenAddress(usdcMint, publicKey);
-      const recipientUsdcAccount = await getAssociatedTokenAddress(usdcMint, recipient);
-      
-      const userAccountInfo = await connection.getAccountInfo(userUsdcAccount);
-      if (!userAccountInfo) {
-        throw new Error('You need to have USDC in your wallet first');
-      }
-      
-      const transferInstruction = createTransferInstruction(
-        userUsdcAccount,
-        recipientUsdcAccount,
+      // Get user's USDC token account
+      const userUsdcAccount = await getAssociatedTokenAddress(
+        usdcMint,
         publicKey,
-        price * 1000000,
-        [],
-        TOKEN_PROGRAM_ID
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
       );
       
-      const transaction = new Transaction().add(transferInstruction);
+      // Get recipient's USDC token account
+      const recipientUsdcAccount = await getAssociatedTokenAddress(
+        usdcMint,
+        recipient,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+
+      const transaction = new Transaction();
+
+      // Check if user has USDC account, if not create it
+      const userAccountInfo = await connection.getAccountInfo(userUsdcAccount);
+      if (!userAccountInfo) {
+        setStatus('Creating USDC account...');
+        transaction.add(
+          createAssociatedTokenAccountInstruction(
+            publicKey, // payer
+            userUsdcAccount, // associated token account
+            publicKey, // owner
+            usdcMint, // mint
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          )
+        );
+      }
+
+      // Check if recipient has USDC account, if not create it
+      const recipientAccountInfo = await connection.getAccountInfo(recipientUsdcAccount);
+      if (!recipientAccountInfo) {
+        transaction.add(
+          createAssociatedTokenAccountInstruction(
+            publicKey, // payer (user pays for this too)
+            recipientUsdcAccount,
+            recipient,
+            usdcMint,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          )
+        );
+      }
+
+      // Add USDC transfer instruction
+      setStatus('Transferring USDC...');
+      transaction.add(
+        createTransferInstruction(
+          userUsdcAccount,
+          recipientUsdcAccount,
+          publicKey,
+          price * 1000000, // 6 decimals for USDC
+          [],
+          TOKEN_PROGRAM_ID
+        )
+      );
+
+      // Send transaction
       transaction.feePayer = publicKey;
-      
       const { blockhash } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
       
@@ -91,6 +142,7 @@ export default function CrossmintMintButton({
 
       setStatus(`NFT Minted! TX: ${mintData.actionId.slice(0, 8)}...`);
 
+      // Poll for status
       const interval = setInterval(async () => {
         const check = await fetch(`/api/mint/status?actionId=${mintData.actionId}`);
         const statusData = await check.json();
