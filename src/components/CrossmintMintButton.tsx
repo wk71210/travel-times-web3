@@ -28,7 +28,7 @@ const USDC_MINT_ADDRESS = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 export default function CrossmintMintButton({ 
   metadata, 
   price = 5,
-  recipientWallet = '6nHPbBNxh31qpKfLrs3WzzDGkDjmQYQGuVsh9ADx9qQZ'
+  recipientWallet = 'A9GT8pYUR5F1oRwUsQ9ADeZTWq7LJMfmPQ3TZLmV6cQP' // ✅ Aapka correct wallet
 }: Props) {
   const { publicKey, connected, signTransaction } = useWallet();
   const { connection } = useConnection();
@@ -48,11 +48,11 @@ export default function CrossmintMintButton({
       const usdcMint = new PublicKey(USDC_MINT_ADDRESS);
       const recipient = new PublicKey(recipientWallet);
       
-      // Get user's USDC token account (allowOwnerOffCurve = true)
+      // Get user's USDC token account
       const userUsdcAccount = getAssociatedTokenAddressSync(
         usdcMint,
         publicKey,
-        true, // allowOwnerOffCurve
+        true,
         TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
@@ -61,7 +61,7 @@ export default function CrossmintMintButton({
       const recipientUsdcAccount = getAssociatedTokenAddressSync(
         usdcMint,
         recipient,
-        true, // allowOwnerOffCurve
+        true,
         TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
@@ -74,10 +74,10 @@ export default function CrossmintMintButton({
         setStatus('Creating your USDC account...');
         transaction.add(
           createAssociatedTokenAccountInstruction(
-            publicKey, // payer
-            userUsdcAccount, // associated token account
-            publicKey, // owner
-            usdcMint // mint
+            publicKey,
+            userUsdcAccount,
+            publicKey,
+            usdcMint
           )
         );
       }
@@ -88,7 +88,7 @@ export default function CrossmintMintButton({
         setStatus('Creating recipient USDC account...');
         transaction.add(
           createAssociatedTokenAccountInstruction(
-            publicKey, // payer (user pays)
+            publicKey,
             recipientUsdcAccount,
             recipient,
             usdcMint
@@ -100,13 +100,13 @@ export default function CrossmintMintButton({
       if (userAccountInfo) {
         const tokenAccountBalance = await connection.getTokenAccountBalance(userUsdcAccount);
         const balance = Number(tokenAccountBalance.value.amount);
-        const requiredAmount = price * 1000000; // 6 decimals
+        const requiredAmount = price * 1000000;
         
         if (balance < requiredAmount) {
           throw new Error(`Insufficient USDC balance. You have ${balance / 1000000} USDC, need ${price} USDC`);
         }
       } else {
-        throw new Error('You need to have USDC in your wallet first. Please acquire some USDC and try again.');
+        throw new Error('You need to have USDC in your wallet first.');
       }
 
       // Add USDC transfer instruction
@@ -116,7 +116,7 @@ export default function CrossmintMintButton({
           userUsdcAccount,
           recipientUsdcAccount,
           publicKey,
-          price * 1000000 // 6 decimals for USDC
+          price * 1000000
         )
       );
 
