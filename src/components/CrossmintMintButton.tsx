@@ -25,10 +25,22 @@ interface Props {
 
 const USDC_MINT_ADDRESS = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
+// ✅ DEFAULT NFT DATA with your Pinata image
+const DEFAULT_NFT_DATA = {
+  name: "Travel PASS",
+  description: "Rare NFT exploring global PASS",
+  image: "https://gray-defeated-monkey-451.mypinata.cloud/ipfs/bafkreic7p4u6caop4l3pktfkxw7xsl6y6y73ughgjxtk46vuyxkik5i26y",
+  attributes: [
+    { trait_type: "Type", value: "Travel" },
+    { trait_type: "Benefit", value: "Global Pass" },
+    { trait_type: "Rarity", value: "Rare" }
+  ]
+};
+
 export default function CrossmintMintButton({ 
-  metadata, 
+  metadata = DEFAULT_NFT_DATA, 
   price = 5,
-  recipientWallet = 'A9GT8pYUR5F1oRwUsQ9ADeZTWq7LJMfmPQ3TZLmV6cQP' // ✅ Aapka correct wallet
+  recipientWallet = 'A9GT8pYUR5F1oRwUsQ9ADeZTWq7LJMfmPQ3TZLmV6cQP' // ✅ Your wallet
 }: Props) {
   const { publicKey, connected, signTransaction } = useWallet();
   const { connection } = useConnection();
@@ -42,7 +54,7 @@ export default function CrossmintMintButton({
     }
 
     setLoading(true);
-    setStatus('Preparing transaction...');
+    setStatus('Checking USDC balance...');
 
     try {
       const usdcMint = new PublicKey(USDC_MINT_ADDRESS);
@@ -66,26 +78,29 @@ export default function CrossmintMintButton({
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
 
-      const transaction = new Transaction();
-
-      // Check if user has USDC account
+      // Check user USDC account and balance
       const userAccountInfo = await connection.getAccountInfo(userUsdcAccount);
+      
       if (!userAccountInfo) {
-        setStatus('Creating your USDC account...');
-        transaction.add(
-          createAssociatedTokenAccountInstruction(
-            publicKey,
-            userUsdcAccount,
-            publicKey,
-            usdcMint
-          )
-        );
+        throw new Error('You need USDC in your wallet first. Please deposit USDC to your wallet.');
       }
 
-      // Check if recipient has USDC account
+      // Check balance
+      const tokenAccountBalance = await connection.getTokenAccountBalance(userUsdcAccount);
+      const balance = Number(tokenAccountBalance.value.amount);
+      const requiredAmount = price * 1000000; // USDC has 6 decimals
+      
+      if (balance < requiredAmount) {
+        throw new Error(`Insufficient USDC balance. You have ${balance / 1000000} USDC, need ${price} USDC`);
+      }
+
+      setStatus('Preparing transaction...');
+      const transaction = new Transaction();
+
+      // Check if recipient has USDC account, if not create it
       const recipientAccountInfo = await connection.getAccountInfo(recipientUsdcAccount);
       if (!recipientAccountInfo) {
-        setStatus('Creating recipient USDC account...');
+        setStatus('Creating recipient account...');
         transaction.add(
           createAssociatedTokenAccountInstruction(
             publicKey,
@@ -94,19 +109,6 @@ export default function CrossmintMintButton({
             usdcMint
           )
         );
-      }
-
-      // Check user USDC balance
-      if (userAccountInfo) {
-        const tokenAccountBalance = await connection.getTokenAccountBalance(userUsdcAccount);
-        const balance = Number(tokenAccountBalance.value.amount);
-        const requiredAmount = price * 1000000;
-        
-        if (balance < requiredAmount) {
-          throw new Error(`Insufficient USDC balance. You have ${balance / 1000000} USDC, need ${price} USDC`);
-        }
-      } else {
-        throw new Error('You need to have USDC in your wallet first.');
       }
 
       // Add USDC transfer instruction
@@ -134,6 +136,7 @@ export default function CrossmintMintButton({
         lastValidBlockHeight
       }, 'confirmed');
       
+      console.log('Payment successful:', signature);
       setStatus('Payment received! Minting NFT...');
 
       // Call Crossmint API
@@ -149,35 +152,43 @@ export default function CrossmintMintButton({
       const mintData = await mintRes.json();
 
       if (!mintData.success) {
-        throw new Error(mintData.error || 'Mint failed');
+        throw new Error(mintData.error || 'Mint API call failed');
       }
 
-      setStatus(`NFT Minted! TX: ${mintData.actionId.slice(0, 8)}...`);
+      setStatus(`NFT Minting... ID: ${mintData.actionId.slice(0, 8)}`);
 
       // Poll for status
       const interval = setInterval(async () => {
-        const check = await fetch(`/api/mint/status?actionId=${mintData.actionId}`);
-        const statusData = await check.json();
-        
-        if (statusData.status === 'succeeded') {
-          clearInterval(interval);
-          setStatus('✅ NFT Delivered to your wallet!');
-          setLoading(false);
-        } else if (statusData.status === 'failed') {
-          clearInterval(interval);
-          setStatus('❌ Mint failed');
-          setLoading(false);
+        try {
+          const check = await fetch(`/api/mint/status?actionId=${mintData.actionId}`);
+          const statusData = await check.json();
+          
+          if (statusData.status === 'succeeded') {
+            clearInterval(interval);
+            setStatus('✅ NFT Delivered to your wallet!');
+            setLoading(false);
+          } else if (statusData.status === 'failed') {
+            clearInterval(interval);
+            setStatus('❌ Mint failed. Contact support.');
+            setLoading(false);
+          }
+        } catch (e) {
+          console.error('Status check error:', e);
         }
       }, 3000);
 
+      // Stop after 2 minutes
       setTimeout(() => {
         clearInterval(interval);
-        if (loading) setLoading(false);
+        if (loading) {
+          setLoading(false);
+          setStatus('⏱️ Timeout - Check wallet later');
+        }
       }, 120000);
 
     } catch (err: any) {
       console.error('Mint error:', err);
-      setStatus(`Error: ${err.message}`);
+      setStatus(`❌ ${err.message}`);
       setLoading(false);
     }
   };
@@ -197,22 +208,22 @@ export default function CrossmintMintButton({
         disabled={loading}
         className={`
           font-bold py-4 px-8 rounded-lg text-white text-lg
-          transition-all duration-200 min-w-[250px]
+          transition-all duration-200 min-w-[280px]
           ${loading 
             ? 'bg-gray-500 cursor-not-allowed' 
-            : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 transform hover:scale-105'
+            : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 transform hover:scale-105 shadow-lg'
           }
         `}
       >
         {loading ? status : `Mint NFT - ${price} USDC`}
       </button>
       
-      {status && !loading && (
+      {status && (
         <div className={`
-          px-4 py-2 rounded-lg text-sm font-medium max-w-xs text-center
-          ${status.includes('✅') ? 'bg-green-100 text-green-800' : 
-            status.includes('❌') ? 'bg-red-100 text-red-800' : 
-            'bg-blue-100 text-blue-800'}
+          px-4 py-3 rounded-lg text-sm font-medium max-w-sm text-center
+          ${status.includes('✅') ? 'bg-green-100 text-green-800 border border-green-300' : 
+            status.includes('❌') ? 'bg-red-100 text-red-800 border border-red-300' : 
+            'bg-blue-100 text-blue-800 border border-blue-300'}
         `}>
           {status}
         </div>
