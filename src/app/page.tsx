@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { ArrowRight, Sparkles, Zap, Menu, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
+import CrossmintMintButton from '@/components/CrossmintMintButton';
 
 // Dynamic import for Earth component
 const EarthCanvas = dynamic(() => import('@/components/Earth'), {
@@ -18,6 +19,18 @@ const EarthCanvas = dynamic(() => import('@/components/Earth'), {
   ),
 });
 
+// Test NFT Data for Crossmint
+const TEST_NFT = {
+  name: "RewardNFT Test #001",
+  description: "Test NFT for Crossmint Integration - Single Transaction Mint",
+  image: "https://placehold.co/400x400/purple/white?text=RewardNFT",
+  attributes: [
+    { trait_type: "Type", value: "Test" },
+    { trait_type: "Rarity", value: "Common" },
+    { trait_type: "Platform", value: "Crossmint" }
+  ]
+};
+
 export default function HomePage() {
   const router = useRouter();
   const { user, isAdmin } = useAppStore();
@@ -26,28 +39,19 @@ export default function HomePage() {
 
   useEffect(() => {
     setMounted(true);
-    // AUTO REDIRECT HATA DIYA - User can now see home page
-    // if (user?.wallet) {
-    //   if (isAdmin) {
-    //     router.push('/admin');
-    //   } else {
-    //     router.push('/profile');
-    //   }
-    // }
   }, [user, isAdmin, router]);
 
-  const xpDisplay = user?.xp ? `${(user.xp / 1000).toFixed(1)}k` : '0';
-  const boostDisplay = user?.boost ? `${user.boost}x` : '1.0x';
+  if (!mounted) return null;
 
   return (
     <div className="min-h-screen bg-nomad-dark text-white overflow-x-hidden">
       {/* HEADER HATA DIYA - Ab layout se aa raha hai */}
-      
+
       <main className="pt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-16 pb-16">
           <div className="text-center">
             {/* Heading */}
-            <motion.h1 
+            <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
@@ -57,8 +61,8 @@ export default function HomePage() {
               <br />
               <span className="text-crypto-green">WHILE TRAVELING</span>
             </motion.h1>
-            
-            <motion.p 
+
+            <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
@@ -67,8 +71,22 @@ export default function HomePage() {
               Book with crypto and save up to 60% on 1M+ stays worldwide
             </motion.p>
 
+            {/* CROSSMINT MINT BUTTON - NEW SECTION */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="max-w-xl mx-auto mb-8 md:mb-10 px-4"
+            >
+              <div className="bg-nomad-card/50 backdrop-blur rounded-2xl border border-nomad-border p-6">
+                <h3 className="text-xl font-bold mb-2 text-crypto-green">🚀 Test Crossmint Mint</h3>
+                <p className="text-nomad-gray text-sm mb-4">Single Transaction - No Phantom Warning</p>
+                <CrossmintMintButton metadata={TEST_NFT} />
+              </div>
+            </motion.div>
+
             {/* Search Box */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
@@ -80,12 +98,12 @@ export default function HomePage() {
                   <span className="hidden sm:inline">AI MODE</span>
                   <span className="sm:hidden">AI</span>
                 </div>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Where to?"
                   className="flex-1 bg-transparent outline-none text-white placeholder-nomad-gray px-2 sm:px-4 text-sm sm:text-base"
                 />
-                <Link 
+                <Link
                   href="/bookings"
                   className="p-2 sm:p-3 bg-white rounded-lg hover:bg-gray-200 transition-colors"
                 >
@@ -104,65 +122,65 @@ export default function HomePage() {
               <div className="w-full h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px]">
                 <EarthCanvas />
               </div>
-              
-              {/* Floating Labels */}
-              <div className="absolute top-1/4 left-1/4 hidden lg:block">
-                <motion.div 
-                  animate={{ y: [0, -10, 0] }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                  className="bg-nomad-card/80 backdrop-blur px-3 py-1 rounded-full border border-nomad-border text-xs"
-                >
-                  🌴 Bali
-                </motion.div>
-              </div>
-              <div className="absolute top-1/3 right-1/4 hidden lg:block">
-                <motion.div 
-                  animate={{ y: [0, -10, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, delay: 1 }}
-                  className="bg-nomad-card/80 backdrop-blur px-3 py-1 rounded-full border border-nomad-border text-xs"
-                >
-                  🗽 New York
-                </motion.div>
-              </div>
-              <div className="absolute bottom-1/3 left-1/3 hidden lg:block">
-                <motion.div 
-                  animate={{ y: [0, -10, 0] }}
-                  transition={{ duration: 3.5, repeat: Infinity, delay: 0.5 }}
-                  className="bg-nomad-card/80 backdrop-blur px-3 py-1 rounded-full border border-nomad-border text-xs"
-                >
-                  🗼 Paris
-                </motion.div>
-              </div>
             </motion.div>
 
-            {/* Badges */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.8 }}
-              className="flex flex-wrap justify-center gap-2 sm:gap-4 px-4"
-            >
-              <div className="px-3 sm:px-4 py-2 bg-nomad-card rounded-full border border-nomad-border text-xs sm:text-sm flex items-center gap-2">
-                <span>🏆</span>
-                <span className="hidden sm:inline">Winner Solana Hackathon</span>
-                <span className="sm:hidden">Solana Winner</span>
-              </div>
-              <div className="px-3 sm:px-4 py-2 bg-nomad-card rounded-full border border-nomad-border text-xs sm:text-sm flex items-center gap-2">
-                <span className="text-crypto-green">⬡</span>
-                <span className="hidden sm:inline">Supported by Solana</span>
-                <span className="sm:hidden">Solana</span>
-              </div>
-              <div className="px-3 sm:px-4 py-2 bg-nomad-card rounded-full border border-nomad-border text-xs sm:text-sm flex items-center gap-2">
-                <span className="text-crypto-green">◉</span>
-                <span className="hidden sm:inline">Circle Alliance Member</span>
-                <span className="sm:hidden">Circle</span>
-              </div>
-            </motion.div>
-          </div>
+            {/* Floating Labels */}
+            <div className="absolute top-1/4 left-1/4 hidden lg:block">
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 3, repeat: Infinity }}
+                className="bg-nomad-card/80 backdrop-blur px-3 py-1 rounded-full border border-nomad-border text-xs"
+              >
+                🌴 Bali
+              </motion.div>
+            </div>
+            <div className="absolute top-1/3 right-1/4 hidden lg:block">
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 4, repeat: Infinity, delay: 1 }}
+                className="bg-nomad-card/80 backdrop-blur px-3 py-1 rounded-full border border-nomad-border text-xs"
+              >
+                🗽 New York
+              </motion.div>
+            </div>
+            <div className="absolute bottom-1/3 left-1/3 hidden lg:block">
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 3.5, repeat: Infinity, delay: 0.5 }}
+                className="bg-nomad-card/80 backdrop-blur px-3 py-1 rounded-full border border-nomad-border text-xs"
+              >
+                🗼 Paris
+              </motion.div>
+            </div>
+          </motion.div>
+
+          {/* Badges */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
+            className="flex flex-wrap justify-center gap-2 sm:gap-4 px-4"
+          >
+            <div className="px-3 sm:px-4 py-2 bg-nomad-card rounded-full border border-nomad-border text-xs sm:text-sm flex items-center gap-2">
+              <span>🏆</span>
+              <span className="hidden sm:inline">Winner Solana Hackathon</span>
+              <span className="sm:hidden">Solana Winner</span>
+            </div>
+            <div className="px-3 sm:px-4 py-2 bg-nomad-card rounded-full border border-nomad-border text-xs sm:text-sm flex items-center gap-2">
+              <span className="text-crypto-green">⚡</span>
+              <span className="hidden sm:inline">Supported by Solana</span>
+              <span className="sm:hidden">Solana</span>
+            </div>
+            <div className="px-3 sm:px-4 py-2 bg-nomad-card rounded-full border border-nomad-border text-xs sm:text-sm flex items-center gap-2">
+              <span className="text-crypto-green">◉</span>
+              <span className="hidden sm:inline">Circle Alliance Member</span>
+              <span className="sm:hidden">Circle</span>
+            </div>
+          </motion.div>
         </div>
 
         {/* Stats Section */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
