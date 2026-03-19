@@ -152,7 +152,7 @@ export default function HomePage() {
                 🗼 Paris
               </motion.div>
             </div>
-          </motion.div>
+          </div>
 
           {/* Badges */}
           <motion.div
