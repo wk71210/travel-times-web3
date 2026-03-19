@@ -18,17 +18,20 @@ const EarthCanvas = dynamic(() => import('@/components/Earth'), {
   ),
 });
 
-// NFT Data
+// ✅ NFT Data with your Pinata image
 const NFT_DATA = {
-  name: "TravelTimes NFT #001",
-  description: "Exclusive TravelTimes NFT - Book stays with crypto",
-  image: "https://placehold.co/400x400/purple/white?text=TravelTimes+NFT",
+  name: "Travel PASS",
+  description: "Rare NFT exploring global PASS",
+  image: "https://gray-defeated-monkey-451.mypinata.cloud/ipfs/bafkreic7p4u6caop4l3pktfkxw7xsl6y6y73ughgjxtk46vuyxkik5i26y",
   attributes: [
     { trait_type: "Type", value: "Travel" },
-    { trait_type: "Benefit", value: "10% Discount" },
+    { trait_type: "Benefit", value: "Global Pass" },
     { trait_type: "Rarity", value: "Rare" }
   ]
 };
+
+// ✅ Your wallet address for 5 USDC payment
+const RECIPIENT_WALLET = 'A9GT8pYUR5F1oRwUsQ9ADeZTWq7LJMfmPQ3TZLmV6cQP';
 
 export default function HomePage() {
   const router = useRouter();
@@ -67,7 +70,7 @@ export default function HomePage() {
               Book with crypto and save up to 60% on 1M+ stays worldwide
             </motion.p>
 
-            {/* MINT BUTTON - Direct 5 USDC */}
+            {/* ✅ MINT BUTTON - Fixed with your image and wallet */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -80,7 +83,7 @@ export default function HomePage() {
                 <CrossmintMintButton 
                   metadata={NFT_DATA} 
                   price={5}
-                  recipientWallet="6nHPbBNxh31qpKfLrs3WzzDGkDjmQYQGuVsh9ADx9qQZ"
+                  recipientWallet={RECIPIENT_WALLET}
                 />
               </div>
             </motion.div>
