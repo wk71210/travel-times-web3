@@ -4,13 +4,23 @@ import { Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import WalletConnect from '@/components/WalletConnect';
 import { useAppStore } from '@/lib/stores/appStore';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
+// Solana Wallet Adapter Imports
+import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
+import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
+import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
+import { clusterApiUrl } from '@solana/web3.js';
+
+// Import wallet adapter CSS
+import '@solana/wallet-adapter-react-ui/styles.css';
+
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
-const spaceGrotesk = Space_Grotesk({ 
-  subsets: ['latin'], 
-  variable: '--font-space-grotesk' 
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-space-grotesk'
 });
 
 function Header() {
@@ -56,9 +66,8 @@ function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-nomad-border">
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          
           {/* LOGO - FIXED */}
-          <button 
+          <button
             onClick={handleLogoClick}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer bg-transparent border-none outline-none"
             type="button"
@@ -73,7 +82,7 @@ function Header() {
 
           {/* Nav Links - FIXED */}
           <nav className="hidden md:flex items-center gap-6">
-            <button 
+            <button
               onClick={() => handleNavClick('/search')}
               className={`text-sm transition-colors bg-transparent border-none outline-none cursor-pointer ${
                 isActive('/search') ? 'text-white' : 'text-nomad-gray hover:text-white'
@@ -82,7 +91,7 @@ function Header() {
             >
               SEARCH
             </button>
-            <button 
+            <button
               onClick={() => handleNavClick('/my-trips')}
               className={`text-sm transition-colors bg-transparent border-none outline-none cursor-pointer ${
                 isActive('/my-trips') ? 'text-white' : 'text-nomad-gray hover:text-white'
@@ -91,7 +100,7 @@ function Header() {
             >
               MY TRIPS
             </button>
-            <button 
+            <button
               onClick={() => handleNavClick('/events')}
               className={`text-sm transition-colors bg-transparent border-none outline-none cursor-pointer ${
                 isActive('/events') ? 'text-white' : 'text-nomad-gray hover:text-white'
@@ -100,7 +109,7 @@ function Header() {
             >
               EVENTS
             </button>
-            <button 
+            <button
               onClick={() => handleNavClick('/profile')}
               className={`text-sm transition-colors bg-transparent border-none outline-none cursor-pointer ${
                 isActive('/profile') ? 'text-white' : 'text-nomad-gray hover:text-white'
@@ -114,7 +123,7 @@ function Header() {
           {/* Right Side */}
           <div className="flex items-center gap-4">
             {isAdmin && (
-              <button 
+              <button
                 onClick={() => handleNavClick('/admin')}
                 className="text-sm text-crypto-green hover:text-crypto-green/80 transition-colors px-3 py-1 border border-crypto-green rounded-lg bg-transparent cursor-pointer"
                 type="button"
@@ -130,6 +139,33 @@ function Header() {
   );
 }
 
+// Solana Wallet Provider Component
+function SolanaWalletProvider({ children }: { children: React.ReactNode }) {
+  const network = WalletAdapterNetwork.Mainnet;
+  const endpoint = useMemo(() => 
+    process.env.NEXT_PUBLIC_SOLANA_RPC || clusterApiUrl(network), 
+    [network]
+  );
+  
+  const wallets = useMemo(
+    () => [
+      new PhantomWalletAdapter(),
+      new SolflareWalletAdapter(),
+    ],
+    [network]
+  );
+
+  return (
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>
+          {children}
+        </WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
+  );
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -138,10 +174,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <body className="font-sans bg-nomad-dark text-white min-h-screen">
-        <Header />
-        <main className="pt-20">
-          {children}
-        </main>
+        <SolanaWalletProvider>
+          <Header />
+          <main className="pt-20">
+            {children}
+          </main>
+        </SolanaWalletProvider>
       </body>
     </html>
   );
