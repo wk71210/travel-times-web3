@@ -7,7 +7,7 @@ import { useAppStore } from '@/lib/stores/appStore';
 import { useEffect, useState, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
-// Solana Wallet Adapter Imports
+// Solana Wallet Imports
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
@@ -66,7 +66,6 @@ function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-nomad-border">
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          {/* LOGO - FIXED */}
           <button
             onClick={handleLogoClick}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer bg-transparent border-none outline-none"
@@ -80,7 +79,6 @@ function Header() {
             </span>
           </button>
 
-          {/* Nav Links - FIXED */}
           <nav className="hidden md:flex items-center gap-6">
             <button
               onClick={() => handleNavClick('/search')}
@@ -120,7 +118,6 @@ function Header() {
             </button>
           </nav>
 
-          {/* Right Side */}
           <div className="flex items-center gap-4">
             {isAdmin && (
               <button
@@ -139,7 +136,7 @@ function Header() {
   );
 }
 
-// Solana Wallet Provider Component
+// Solana Wallet Provider
 function SolanaWalletProvider({ children }: { children: React.ReactNode }) {
   const network = WalletAdapterNetwork.Mainnet;
   const endpoint = useMemo(() => 
