@@ -4,12 +4,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/lib/stores/appStore';
 import Link from 'next/link';
-import { ArrowRight, Sparkles, Zap, Menu, X } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import CrossmintMintButton from '@/components/CrossmintMintButton';
 
-// Dynamic import for Earth component
 const EarthCanvas = dynamic(() => import('@/components/Earth'), {
   ssr: false,
   loading: () => (
@@ -19,15 +18,15 @@ const EarthCanvas = dynamic(() => import('@/components/Earth'), {
   ),
 });
 
-// Test NFT Data for Crossmint
-const TEST_NFT = {
-  name: "RewardNFT Test #001",
-  description: "Test NFT for Crossmint Integration - Single Transaction Mint",
-  image: "https://placehold.co/400x400/purple/white?text=RewardNFT",
+// NFT Data
+const NFT_DATA = {
+  name: "TravelTimes NFT #001",
+  description: "Exclusive TravelTimes NFT - Book stays with crypto",
+  image: "https://placehold.co/400x400/purple/white?text=TravelTimes+NFT",
   attributes: [
-    { trait_type: "Type", value: "Test" },
-    { trait_type: "Rarity", value: "Common" },
-    { trait_type: "Platform", value: "Crossmint" }
+    { trait_type: "Type", value: "Travel" },
+    { trait_type: "Benefit", value: "10% Discount" },
+    { trait_type: "Rarity", value: "Rare" }
   ]
 };
 
@@ -35,7 +34,6 @@ export default function HomePage() {
   const router = useRouter();
   const { user, isAdmin } = useAppStore();
   const [mounted, setMounted] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -45,8 +43,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-nomad-dark text-white overflow-x-hidden">
-      {/* HEADER HATA DIYA - Ab layout se aa raha hai */}
-
       <main className="pt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-16 pb-16">
           <div className="text-center">
@@ -71,7 +67,7 @@ export default function HomePage() {
               Book with crypto and save up to 60% on 1M+ stays worldwide
             </motion.p>
 
-            {/* CROSSMINT MINT BUTTON - NEW SECTION */}
+            {/* MINT BUTTON - Direct 5 USDC */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -79,9 +75,13 @@ export default function HomePage() {
               className="max-w-xl mx-auto mb-8 md:mb-10 px-4"
             >
               <div className="bg-nomad-card/50 backdrop-blur rounded-2xl border border-nomad-border p-6">
-                <h3 className="text-xl font-bold mb-2 text-crypto-green">🚀 Test Crossmint Mint</h3>
-                <p className="text-nomad-gray text-sm mb-4">Single Transaction - No Phantom Warning</p>
-                <CrossmintMintButton metadata={TEST_NFT} />
+                <h3 className="text-xl font-bold mb-2 text-crypto-green">🚀 Mint Your Travel NFT</h3>
+                <p className="text-nomad-gray text-sm mb-4">Get 10% discount on all bookings + exclusive perks</p>
+                <CrossmintMintButton 
+                  metadata={NFT_DATA} 
+                  price={5}
+                  recipientWallet="6nHPbBNxh31qpKfLrs3WzzDGkDjmQYQGuVsh9ADx9qQZ"
+                />
               </div>
             </motion.div>
 
@@ -112,7 +112,7 @@ export default function HomePage() {
               </div>
             </motion.div>
 
-            {/* 3D Earth - SIZE BADHA DIYA */}
+            {/* 3D Earth */}
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
