@@ -5,7 +5,7 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import { 
-  getAssociatedTokenAddress, 
+  getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
   createTransferInstruction, 
   TOKEN_PROGRAM_ID,
@@ -48,55 +48,65 @@ export default function CrossmintMintButton({
       const usdcMint = new PublicKey(USDC_MINT_ADDRESS);
       const recipient = new PublicKey(recipientWallet);
       
-      // Get user's USDC token account
-      const userUsdcAccount = await getAssociatedTokenAddress(
+      // Get user's USDC token account (allowOwnerOffCurve = true)
+      const userUsdcAccount = getAssociatedTokenAddressSync(
         usdcMint,
         publicKey,
-        false,
+        true, // allowOwnerOffCurve
         TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
       
       // Get recipient's USDC token account
-      const recipientUsdcAccount = await getAssociatedTokenAddress(
+      const recipientUsdcAccount = getAssociatedTokenAddressSync(
         usdcMint,
         recipient,
-        false,
+        true, // allowOwnerOffCurve
         TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
 
       const transaction = new Transaction();
 
-      // Check if user has USDC account, if not create it
+      // Check if user has USDC account
       const userAccountInfo = await connection.getAccountInfo(userUsdcAccount);
       if (!userAccountInfo) {
-        setStatus('Creating USDC account...');
+        setStatus('Creating your USDC account...');
         transaction.add(
           createAssociatedTokenAccountInstruction(
             publicKey, // payer
             userUsdcAccount, // associated token account
             publicKey, // owner
-            usdcMint, // mint
-            TOKEN_PROGRAM_ID,
-            ASSOCIATED_TOKEN_PROGRAM_ID
+            usdcMint // mint
           )
         );
       }
 
-      // Check if recipient has USDC account, if not create it
+      // Check if recipient has USDC account
       const recipientAccountInfo = await connection.getAccountInfo(recipientUsdcAccount);
       if (!recipientAccountInfo) {
+        setStatus('Creating recipient USDC account...');
         transaction.add(
           createAssociatedTokenAccountInstruction(
-            publicKey, // payer (user pays for this too)
+            publicKey, // payer (user pays)
             recipientUsdcAccount,
             recipient,
-            usdcMint,
-            TOKEN_PROGRAM_ID,
-            ASSOCIATED_TOKEN_PROGRAM_ID
+            usdcMint
           )
         );
+      }
+
+      // Check user USDC balance
+      if (userAccountInfo) {
+        const tokenAccountBalance = await connection.getTokenAccountBalance(userUsdcAccount);
+        const balance = Number(tokenAccountBalance.value.amount);
+        const requiredAmount = price * 1000000; // 6 decimals
+        
+        if (balance < requiredAmount) {
+          throw new Error(`Insufficient USDC balance. You have ${balance / 1000000} USDC, need ${price} USDC`);
+        }
+      } else {
+        throw new Error('You need to have USDC in your wallet first. Please acquire some USDC and try again.');
       }
 
       // Add USDC transfer instruction
@@ -106,21 +116,23 @@ export default function CrossmintMintButton({
           userUsdcAccount,
           recipientUsdcAccount,
           publicKey,
-          price * 1000000, // 6 decimals for USDC
-          [],
-          TOKEN_PROGRAM_ID
+          price * 1000000 // 6 decimals for USDC
         )
       );
 
       // Send transaction
       transaction.feePayer = publicKey;
-      const { blockhash } = await connection.getLatestBlockhash();
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
       
       const signed = await signTransaction(transaction);
       const signature = await connection.sendRawTransaction(signed.serialize());
       
-      await connection.confirmTransaction(signature, 'confirmed');
+      await connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight
+      }, 'confirmed');
       
       setStatus('Payment received! Minting NFT...');
 
